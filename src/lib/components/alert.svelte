@@ -87,7 +87,6 @@
     width: 20px;
     height: 20px;
     border-radius: var(--flew-radius-sm);
-    cursor: pointer;
     opacity: 0.6;
     transition: all var(--flew-transition-fast);
     margin-top: 1px;

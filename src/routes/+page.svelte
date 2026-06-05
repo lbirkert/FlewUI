@@ -18,25 +18,25 @@
   </Flex>
 
   <Grid columns={2} gap="var(--flew-spacing-4)">
-    <Card variant="outlined" padding="var(--flew-spacing-5)">
+    <Card variant="outlined" paddingSize="lg">
       <Flex direction="vertical" gap="var(--flew-spacing-2)">
         <Flex gap="var(--flew-spacing-2)" align="center"><Zap size={18} /><Text weight="semibold">Reactive Validation</Text></Flex>
         <Text size="sm" color="secondary">Pure <Code variant="inline">Rule</Code> functions that compose via <Code variant="inline">pipe()</Code> with automatic short-circuiting. Errors update on every keystroke.</Text>
       </Flex>
     </Card>
-    <Card variant="outlined" padding="var(--flew-spacing-5)">
+    <Card variant="outlined" paddingSize="lg">
       <Flex direction="vertical" gap="var(--flew-spacing-2)">
         <Flex gap="var(--flew-spacing-2)" align="center"><Palette size={18} /><Text weight="semibold">Dark Mode</Text></Flex>
         <Text size="sm" color="secondary">Built-in dark/light mode with <Code variant="inline">mode-watcher</Code>. Toggle via the <Sun size={14} /> button in the header.</Text>
       </Flex>
     </Card>
-    <Card variant="outlined" padding="var(--flew-spacing-5)">
+    <Card variant="outlined" paddingSize="lg">
       <Flex direction="vertical" gap="var(--flew-spacing-2)">
         <Flex gap="var(--flew-spacing-2)" align="center"><Shield size={18} /><Text weight="semibold">Cross-Field Rules</Text></Flex>
         <Text size="sm" color="secondary"><Code variant="inline">matchesField()</Code> re-evaluates when the source field changes. All rules receive form context — no unsafe <Code variant="inline">getContext()</Code> calls.</Text>
       </Flex>
     </Card>
-    <Card variant="outlined" padding="var(--flew-spacing-5)">
+    <Card variant="outlined" paddingSize="lg">
       <Flex direction="vertical" gap="var(--flew-spacing-2)">
         <Flex gap="var(--flew-spacing-2)" align="center"><Package size={18} /><Text weight="semibold">Zero Dependencies</Text></Flex>
         <Text size="sm" color="secondary">Pure Svelte 5 stores and context. No validation library, no runtime overhead. ~2kB gzipped for the form system.</Text>
@@ -46,7 +46,7 @@
 
   <Flex direction="vertical" gap="var(--flew-spacing-4)">
     <Heading depth={2}>Quick Start</Heading>
-    <Card variant="outlined" padding="var(--flew-spacing-5)">
+    <Card variant="outlined" paddingSize="lg">
       <Code variant="block" lang="svelte" code={`<Form onSubmit={handleSubmit}>
   <Input id="email" label="Email" validate={pipe(required(), email())} />
   <Input id="password" label="Password" validate={pipe(required(), minLength(8))} />
@@ -61,7 +61,7 @@
       <Button variant="primary" href="/components" onclick={() => {}}>
         Components <ArrowRight size={16} />
       </Button>
-      <Button variant="outline" href="/apps/dashboard" onclick={() => {}}>
+      <Button variant="outline" href="/apps" onclick={() => {}}>
         Demo Apps
       </Button>
     </Flex>

@@ -10,6 +10,7 @@
     size?: Size;
     weight?: Weight;
     color?: Color;
+    margin?: "default" | "none";
     align?: Align;
     as?: "span" | "p" | "div" | "label";
     style?: string;
@@ -21,7 +22,8 @@
     weight = "normal",
     color = "default",
     align = "left",
-    as = "span",
+    margin = "default",
+    as = "p",
     style = "",
     children,
   }: Props = $props();
@@ -55,8 +57,8 @@
 </script>
 
 <svelte:element
-  this={as === "p" ? "p" : as === "label" ? "label" : as === "div" ? "div" : "span"}
-  class="text"
+  this={as}
+  class={`text margin-${margin}`}
   style="
     font-size: {sizeMap[size]};
     font-weight: {weightMap[weight]};
@@ -73,5 +75,9 @@
     font-family: var(--flew-font-sans);
     line-height: 1.5;
     margin: 0;
+  }
+
+  .text.margin-default {
+    margin-bottom: var(--flew-spacing-2);
   }
 </style>

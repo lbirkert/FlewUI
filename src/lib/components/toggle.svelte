@@ -4,10 +4,12 @@
   import { get, writable } from "svelte/store";
   import { type Chainable } from "$lib/validators.js";
 
+  type Variant = "filled" | "outlined";
   type Size = "sm" | "md" | "lg";
 
   type Props = {
     checked?: boolean;
+    variant?: Variant;
     disabled?: boolean;
     label?: string;
     id?: string;
@@ -18,6 +20,7 @@
 
   let {
     checked = $bindable(false),
+    variant = "filled",
     disabled = false,
     label = "",
     id = "",
@@ -68,7 +71,7 @@
     (touched || formCtx?.submitted ? localError : "") || "",
   );
 
-  let cls = $derived(`toggle size-${size}${disabled ? " disabled" : ""}${checked ? " checked" : ""}${displayError ? " has-error" : ""}`);
+  let cls = $derived(`toggle variant-${variant} size-${size}${disabled ? " disabled" : ""}${checked ? " checked" : ""}${displayError ? " has-error" : ""}`);
 
   function handleChange(e: Event) {
     touched = true;
@@ -126,6 +129,21 @@
     background: var(--flew-color-bg-active);
     transition: background var(--flew-transition-fast);
     flex-shrink: 0;
+  }
+
+  .variant-outlined .track {
+    background: transparent;
+    outline: 1px solid var(--flew-color-border);
+  }
+
+  .variant-outlined.checked .track {
+    background: var(--flew-color-primary);
+    outline-color: var(--flew-color-primary);
+  }
+
+  .variant-outlined.checked.has-error .track {
+    background: var(--flew-color-error);
+    outline-color: var(--flew-color-error);
   }
 
   .has-error .track {

@@ -7,14 +7,15 @@
   import Heading from "$lib/components/heading.svelte";
   import Progress from "$lib/components/progress.svelte";
   import Spinner from "$lib/components/spinner.svelte";
+  import Tag from "$lib/components/tag.svelte";
   import Text from "$lib/components/text.svelte";
 </script>
 
 <Flex direction="vertical" gap="var(--flew-spacing-6)" style="padding: var(--flew-spacing-6);">
   <Heading depth={1}>Feedback</Heading>
-  <Text size="lg" color="secondary">Alert, Badge, Progress, Spinner, Dot</Text>
+  <Text size="lg" color="secondary">Alert, Badge, Tag, Progress, Spinner, Dot</Text>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Alert</Heading>
     <Flex direction="vertical" gap="var(--flew-spacing-3)">
       <Alert variant="info" title="Info">This is an informational message.</Alert>
@@ -24,7 +25,7 @@
     </Flex>
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Badge</Heading>
     <Flex gap="var(--flew-spacing-2)" wrap>
       <Badge variant="primary">Primary</Badge>
@@ -36,7 +37,26 @@
     </Flex>
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
+    <Heading depth={2}>Tag</Heading>
+    <Text size="sm" color="secondary">Inline tags/chips with variants, sizes, and optional close button.</Text>
+    <Flex direction="vertical" gap="var(--flew-spacing-3)">
+      <Flex gap="var(--flew-spacing-2)" wrap>
+        <Tag variant="primary">Primary</Tag>
+        <Tag variant="success">Success</Tag>
+        <Tag variant="warning">Warning</Tag>
+        <Tag variant="error">Error</Tag>
+        <Tag variant="info">Info</Tag>
+        <Tag variant="neutral">Neutral</Tag>
+      </Flex>
+      <Flex gap="var(--flew-spacing-2)" align="center">
+        <Tag size="sm" closable>Small</Tag>
+        <Tag size="md" closable>Medium</Tag>
+      </Flex>
+    </Flex>
+  </Card>
+
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Progress</Heading>
     <Flex direction="vertical" gap="var(--flew-spacing-3)">
       <Progress value={65} label="Storage" showValue />
@@ -46,7 +66,7 @@
     </Flex>
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Spinner & Dot</Heading>
     <Flex gap="var(--flew-spacing-4)" align="center">
       <Spinner size="sm" />

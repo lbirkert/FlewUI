@@ -5,11 +5,15 @@
   import { get, writable } from "svelte/store";
   import { type Chainable } from "$lib/validators.js";
 
+  type Variant = "filled" | "outlined";
+
   type Props = {
     checked?: boolean;
+    variant?: Variant;
     disabled?: boolean;
     label?: string;
     id?: string;
+    required?: boolean;
     indeterminate?: boolean;
     validate?: Chainable;
     onchange?: (e: Event) => void;
@@ -17,9 +21,11 @@
 
   let {
     checked = $bindable(false),
+    variant = "filled",
     disabled = false,
     label = "",
     id = "",
+    required = false,
     indeterminate = false,
     validate: validateProp,
     onchange,
@@ -81,7 +87,7 @@
   }
 </script>
 
-<label class="checkbox" class:checked class:disabled class:has-error={!!displayError}>
+<label class="checkbox variant-{variant}" class:checked class:disabled class:has-error={!!displayError}>
   <input
     bind:this={inputEl}
     type="checkbox"
@@ -95,7 +101,10 @@
     <Check size={12} />
   </span>
   {#if label}
-    <span class="label-text">{label}</span>
+    <span class="label-text">
+      {label}
+      {#if required}<span class="required">*</span>{/if}
+    </span>
   {/if}
 </label>
 {#if displayError}
@@ -139,6 +148,20 @@
     flex-shrink: 0;
   }
 
+  .variant-outlined .check {
+    background: transparent;
+  }
+
+  .variant-outlined.checked .check {
+    background: var(--flew-color-primary);
+    border-color: var(--flew-color-primary);
+  }
+
+  .variant-outlined.checked.has-error .check {
+    background: var(--flew-color-error);
+    border-color: var(--flew-color-error);
+  }
+
   .has-error .check {
     border-color: var(--flew-color-error);
   }
@@ -172,6 +195,11 @@
 
   .label-text {
     user-select: none;
+  }
+
+  .required {
+    color: var(--flew-color-error);
+    margin-left: 2px;
   }
 
   .error-msg {

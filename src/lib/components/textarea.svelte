@@ -4,8 +4,11 @@
   import { get, writable } from "svelte/store";
   import { type Chainable } from "$lib/validators.js";
 
+  type Variant = "filled" | "outlined";
+
   type Props = {
     value?: string;
+    variant?: Variant;
     placeholder?: string;
     disabled?: boolean;
     error?: string;
@@ -21,6 +24,7 @@
 
   let {
     value = $bindable(""),
+    variant = "filled",
     placeholder = "",
     disabled = false,
     error = "",
@@ -101,7 +105,7 @@
   {required}
   {rows}
   bind:value={() => $valStore, (val) => ($valStore = val)}
-  class="textarea"
+  class="textarea variant-{variant}"
   class:has-error={!!displayError}
   oninput={handleInput}
   onchange={handleChange}
@@ -137,6 +141,10 @@
     resize: vertical;
     line-height: 1.5;
     transition: all var(--flew-transition-fast);
+  }
+
+  .variant-outlined {
+    background: transparent;
   }
 
   .textarea::placeholder {

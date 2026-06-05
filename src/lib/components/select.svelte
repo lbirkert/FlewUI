@@ -5,10 +5,12 @@
   import { get, writable } from "svelte/store";
   import { type Chainable } from "$lib/validators.js";
 
+  type Variant = "filled" | "outlined";
   type Option = { value: string; label: string; disabled?: boolean };
 
   type Props = {
     value?: string;
+    variant?: Variant;
     options: Option[];
     placeholder?: string;
     disabled?: boolean;
@@ -22,6 +24,7 @@
 
   let {
     value = $bindable(""),
+    variant = "filled",
     options,
     placeholder = "",
     disabled = false,
@@ -94,7 +97,7 @@
     {disabled}
     {required}
     bind:value={$valStore}
-    class="select"
+    class="select variant-{variant}"
     onchange={handleChange}
   >
     {#if placeholder}
@@ -143,6 +146,10 @@
     cursor: pointer;
     transition: all var(--flew-transition-fast);
     line-height: 1.5;
+  }
+
+  .variant-outlined {
+    background: transparent;
   }
 
   .select:hover:not(:disabled) {

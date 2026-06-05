@@ -15,6 +15,22 @@
     children,
   }: Props = $props();
 
+  let tabListEl: HTMLDivElement | undefined = $state();
+  let indicatorLeft = $state(0);
+  let indicatorWidth = $state(0);
+
+  $effect(() => {
+    if (!tabListEl) return;
+    value;
+    tabs;
+    const idx = tabs.findIndex(t => t.value === value);
+    const activeBtn = tabListEl.querySelector<HTMLButtonElement>(".tab.active");
+    if (activeBtn) {
+      indicatorLeft = activeBtn.offsetLeft;
+      indicatorWidth = activeBtn.offsetWidth;
+    }
+  });
+
   function select(v: string) {
     if (v !== value) {
       value = v;
@@ -24,7 +40,7 @@
 </script>
 
 <div class="tabs">
-  <div class="tab-list" role="tablist">
+  <div class="tab-list" role="tablist" bind:this={tabListEl}>
     {#each tabs as tab}
       <button
         class="tab"
@@ -38,7 +54,7 @@
         {tab.label}
       </button>
     {/each}
-    <span class="indicator" style="--tab: {tabs.findIndex(t => t.value === value)}; --count: {tabs.length}"></span>
+    <span class="indicator" style="left: {indicatorLeft}px; width: {indicatorWidth}px;"></span>
   </div>
   <div class="tab-panel" role="tabpanel">
     {@render children()}
@@ -56,6 +72,7 @@
     border-bottom: 1px solid var(--flew-color-border);
     position: relative;
     gap: 0;
+    margin-bottom: var(--flew-spacing-3);
   }
 
   .tab {
@@ -89,6 +106,15 @@
   .tab.disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  .indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--flew-color-primary);
+    transition: left var(--flew-transition-fast), width var(--flew-transition-fast);
   }
 
   .tab-panel {

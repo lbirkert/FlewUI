@@ -11,13 +11,14 @@
   let links = [
     { href: "/", label: "Home" },
     { href: "/components", label: "Overview" },
-    { href: "/components/typography", label: "Typography" },
+    { href: "/components/typography", label: "Type" },
     { href: "/components/form", label: "Form" },
     { href: "/components/layout", label: "Layout" },
     { href: "/components/feedback", label: "Feedback" },
     { href: "/components/navigation", label: "Nav" },
     { href: "/components/overlay", label: "Overlay" },
-    { href: "/components/shell", label: "Shell" },
+    { href: "/components/data", label: "Data" },
+    { href: "/apps", label: "Apps" },
   ];
 </script>
 
@@ -157,12 +158,12 @@
     flex: 1;
     min-height: 0;
     display: flex;
+    overflow-y: auto;
   }
 
   .app-main > :global(*) {
     flex: 1;
     min-width: 0;
     min-height: 0;
-    overflow-y: auto;
   }
 </style>

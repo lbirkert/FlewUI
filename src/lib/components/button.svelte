@@ -13,6 +13,7 @@
     disabled?: boolean;
     loading?: boolean;
     fullWidth?: boolean;
+    stretch?: boolean;
     type?: "button" | "submit" | "reset";
     href?: string;
     shortcut?: string;
@@ -29,6 +30,7 @@
     disabled = false,
     loading = false,
     fullWidth = false,
+    stretch = false,
     type = "button",
     href,
     shortcut = "",
@@ -39,7 +41,7 @@
   }: Props = $props();
 
   let cls = $derived(
-    `btn variant-${variant} size-${size}${icon ? " icon" : ""}${loading ? " loading" : ""}${fullWidth ? " full-width" : ""}${disabled ? " disabled" : ""}`
+    `btn variant-${variant} size-${size}${icon ? " icon" : ""}${loading ? " loading" : ""}${fullWidth ? " full-width" : ""}${stretch ? " stretch" : ""}${disabled ? " disabled" : ""}`
   );
 
   let btnEl = $state<HTMLButtonElement | HTMLAnchorElement | null>(null);
@@ -170,6 +172,11 @@
 
   .full-width {
     width: 100%;
+  }
+
+  .stretch {
+    height: auto;
+    align-self: stretch;
   }
 
   .variant-primary {

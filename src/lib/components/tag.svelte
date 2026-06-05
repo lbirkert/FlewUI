@@ -115,7 +115,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     opacity: 0.6;
     transition: opacity var(--flew-transition-fast);
     width: 14px;

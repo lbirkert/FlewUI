@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { setFormCtx, type FormCtx, type FormErrors, type FormValues, type FieldRegistration } from "./form-context.js";
-    import type { Readable } from "svelte/store";
+  import type { Readable } from "svelte/store";
 
   type Actions = {
     errors: FormErrors;

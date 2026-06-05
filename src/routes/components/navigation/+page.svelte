@@ -24,7 +24,7 @@
   <Heading depth={1}>Navigation</Heading>
   <Text size="lg" color="secondary">Tabs, Breadcrumbs, Menu, Dropdown, Accordion</Text>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Tabs</Heading>
     <Tabs bind:value={tabValue} tabs={[
       { value: "tab1", label: "Overview" },
@@ -37,7 +37,7 @@
     </Tabs>
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Breadcrumbs</Heading>
     <Breadcrumbs items={[
       { label: "Home", href: "/" },
@@ -46,7 +46,7 @@
     ]} />
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Menu</Heading>
     <Menu items={[
       { label: "Edit", value: "edit" },
@@ -59,7 +59,7 @@
     {/if}
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Dropdown</Heading>
     <Dropdown
       trigger={dropdownTrigger}
@@ -74,7 +74,7 @@
     />
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Accordion</Heading>
     <Accordion>
       <AccordionItem id="a1" title="Section 1">

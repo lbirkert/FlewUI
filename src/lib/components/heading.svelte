@@ -3,10 +3,21 @@
 
   type Props = {
     depth?: 1 | 2 | 3 | 4;
+    margin?: "default" | "none";
+    class?: string;
+    style?: string;
     children: Snippet;
   };
 
-  let { depth = 1, children }: Props = $props();
+  let {
+    depth = 1,
+    margin = "default",
+    class: className = "",
+    style = "",
+    children,
+  }: Props = $props();
+
+  let cls = $derived(`heading depth-${depth} margin-${margin}${className ? ' ' + className : ''}`);
 
   const tagMap = {
     1: "h1",
@@ -16,32 +27,28 @@
   } as const;
 </script>
 
-<svelte:element this={tagMap[depth]}>
+<svelte:element this={tagMap[depth]} class={cls} {style}>
   {@render children()}
 </svelte:element>
 
 <style>
-  h1 {
-    font-size: 22px;
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 600;
-    margin: 0 0 12px 0;
   }
 
-  h2 {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 10px 0;
-  }
+  .depth-1 { font-size: 22px; }
+  .depth-2 { font-size: 18px; }
+  .depth-3 { font-size: 15px; }
+  .depth-4 { font-size: 13px; }
 
-  h3 {
-    font-size: 15px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-  }
+  .margin-default { display: block; }
+  .margin-default.depth-1 { margin: 0 0 12px 0; }
+  .margin-default.depth-2 { margin: 0 0 10px 0; }
+  .margin-default.depth-3 { margin: 0 0 8px 0; }
+  .margin-default.depth-4 { margin: 0 0 6px 0; }
 
-  h4 {
-    font-size: 13px;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-  }
+  .margin-none { margin: 0; }
 </style>

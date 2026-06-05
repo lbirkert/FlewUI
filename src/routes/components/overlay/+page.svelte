@@ -14,7 +14,7 @@
   <Heading depth={1}>Overlay</Heading>
   <Text size="lg" color="secondary">Modal, Tooltip</Text>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Tooltip</Heading>
     <Flex gap="var(--flew-spacing-3)" wrap>
       <Tooltip text="Top tooltip" position="top">
@@ -32,7 +32,7 @@
     </Flex>
   </Card>
 
-  <Card variant="outlined" padding="var(--flew-spacing-5)">
+  <Card variant="outlined" paddingSize="lg">
     <Heading depth={2}>Modal</Heading>
     <Button variant="primary" onclick={() => modalOpen = true}>Open Modal</Button>
 

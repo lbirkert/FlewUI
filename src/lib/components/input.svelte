@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, type Snippet } from "svelte";
   import { getFormCtx } from "./form-context.js";
-  import { get, writable, type Readable } from "svelte/store";
+  import { get, writable } from "svelte/store";
   import { type Chainable } from "$lib/validators.js";
 
+  type Variant = "filled" | "outlined";
   type Size = "sm" | "md" | "lg";
   type InputType =
     | "text"
@@ -17,6 +18,7 @@
 
   type Props = {
     value?: string;
+    variant?: Variant;
     placeholder?: string;
     disabled?: boolean;
     error?: string;
@@ -27,6 +29,7 @@
     readonly?: boolean;
     required?: boolean;
     leading?: Snippet;
+    trailing?: Snippet;
     validate?: Chainable;
     style?: string;
     oninput?: (e: Event) => void;
@@ -37,6 +40,7 @@
 
   let {
     value = $bindable(""),
+    variant = "filled",
     placeholder = "",
     disabled = false,
     error = "",
@@ -47,6 +51,7 @@
     readonly = false,
     required = false,
     leading,
+    trailing,
     validate: validateProp,
     style = "",
     oninput,
@@ -59,10 +64,14 @@
   let localError = $state("");
   let touched = $state(false);
 
-  let valueStore = writable<string>(undefined!);
+  let valueStore = writable(value);
 
   $effect(() => {
     value = $valueStore;
+  });
+
+  $effect(() => {
+    valueStore.set(value);
   });
 
   function setError(err: string | undefined) {
@@ -120,28 +129,12 @@
       {#if required}<span class="required">*</span>{/if}
     </label>
   {/if}
-  {#if leading}
-    <div class="input-wrapper" class:has-error={!!displayError}>
+  <div class="input-wrapper variant-{variant}" class:has-error={!!displayError}>
+    {#if leading}
       <span class="leading">
         {@render leading()}
       </span>
-      <input
-        {type}
-        name={id}
-        {id}
-        {placeholder}
-        {disabled}
-        {readonly}
-        {required}
-        bind:value={() => $valueStore, (val) => ($valueStore = val)}
-        class={cls}
-        onblur={handleBlur}
-        oninput={handleInput}
-        {onchange}
-        {onkeydown}
-      />
-    </div>
-  {:else}
+    {/if}
     <input
       {type}
       name={id}
@@ -157,7 +150,12 @@
       {onchange}
       {onkeydown}
     />
-  {/if}
+    {#if trailing}
+      <span class="trailing">
+        {@render trailing()}
+      </span>
+    {/if}
+  </div>
   {#if displayError}
     <span class="error-msg">{displayError}</span>
   {/if}
@@ -197,6 +195,24 @@
     box-shadow: 0 0 0 1px var(--flew-color-primary);
   }
 
+  .variant-outlined {
+    background: transparent;
+  }
+
+  .variant-outlined:focus-within {
+    border-color: var(--flew-color-primary);
+    box-shadow: 0 0 0 1px var(--flew-color-primary);
+  }
+
+  .variant-outlined.has-error {
+    border-color: var(--flew-color-error);
+  }
+
+  .variant-outlined.has-error:focus-within {
+    border-color: var(--flew-color-error);
+    box-shadow: 0 0 0 1px var(--flew-color-error);
+  }
+
   .input-wrapper.has-error {
     border-color: var(--flew-color-error);
   }
@@ -206,12 +222,20 @@
     box-shadow: 0 0 0 1px var(--flew-color-error);
   }
 
-  .leading {
+  .leading,
+  .trailing {
     display: flex;
     align-items: center;
-    padding-left: 8px;
     color: var(--flew-color-text-tertiary);
     flex-shrink: 0;
+  }
+
+  .leading {
+    padding-left: 8px;
+  }
+
+  .trailing {
+    padding-right: 8px;
   }
 
   .input {
@@ -225,12 +249,7 @@
     line-height: 1.5;
   }
 
-  .input-wrapper .input {
-    border: none;
-    box-shadow: none;
-  }
-
-  .input-wrapper .input:focus {
+  .input:focus {
     box-shadow: none;
   }
 
@@ -244,31 +263,18 @@
   }
 
   .size-sm {
-    padding: 4px 8px;
+    padding: 6px 12px;
     font-size: var(--flew-font-size-sm);
     height: 28px;
   }
   .size-md {
-    padding: 6px 12px;
+    padding: 8px 12px;
     font-size: var(--flew-font-size-base);
     height: 32px;
   }
   .size-lg {
-    padding: 8px 14px;
+    padding: 10px 14px;
     font-size: var(--flew-font-size-lg);
-    height: 40px;
-  }
-
-  .input-wrapper .size-sm {
-    padding: 4px 8px 4px 4px;
-    height: 28px;
-  }
-  .input-wrapper .size-md {
-    padding: 6px 12px 6px 6px;
-    height: 32px;
-  }
-  .input-wrapper .size-lg {
-    padding: 8px 14px 8px 8px;
     height: 40px;
   }
 

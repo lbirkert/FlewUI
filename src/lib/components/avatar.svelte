@@ -53,6 +53,7 @@
     border-radius: var(--flew-radius-md);
   }
 
+  .size-xs { width: 20px; height: 20px; font-size: var(--flew-font-size-2xs); }
   .size-sm { width: 24px; height: 24px; font-size: var(--flew-font-size-xs); }
   .size-md { width: 32px; height: 32px; font-size: var(--flew-font-size-sm); }
   .size-lg { width: 40px; height: 40px; font-size: var(--flew-font-size-base); }
