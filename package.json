@@ -25,6 +25,9 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"svelte": "./dist/index.js"
+		},
+		"./styles": {
+			"default": "./dist/styles/tokens.css"
 		}
 	},
 	"peerDependencies": {
@@ -43,5 +46,19 @@
 	},
 	"keywords": [
 		"svelte"
-	]
+	],
+	"dependencies": {
+		"@codemirror/lang-css": "^6.3.1",
+		"@codemirror/lang-html": "^6.4.11",
+		"@codemirror/lang-javascript": "^6.2.5",
+		"@codemirror/lang-json": "^6.0.2",
+		"@codemirror/lang-markdown": "^6.5.0",
+		"@codemirror/theme-one-dark": "^6.1.3",
+		"@lucide/svelte": "^1.17.0",
+		"chart.js": "^4.5.1",
+		"codemirror": "^6.0.2",
+		"highlight.js": "^11.11.1",
+		"lucide-svelte": "^1.0.1",
+		"mode-watcher": "^1.1.0"
+	}
 }

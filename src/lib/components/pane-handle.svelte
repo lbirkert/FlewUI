@@ -7,6 +7,7 @@
     unregisterHandle: (id: symbol) => void;
     handleDragStart: (id: symbol, e: MouseEvent) => void;
     dir: string;
+    activeHandleId: symbol | null;
   }>(PANE_GROUP_CTX);
 
   const id = Symbol("handle");
@@ -25,17 +26,26 @@
   class="pane-handle"
   class:horizontal={ctx.dir === "horizontal"}
   class:vertical={ctx.dir === "vertical"}
+  class:dragging={ctx.activeHandleId === id}
   aria-label="resize handle"
   onmousedown={onMouseDown}
 ></button>
 
 <style>
   .pane-handle {
-    all: unset;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    -webkit-appearance: none;
+    appearance: none;
     position: relative;
     display: block;
     z-index: 10;
-    background-color: black;
+    background-color: var(--flew-color-border);
     flex-shrink: 0;
   }
 
@@ -55,7 +65,7 @@
   .vertical::before {
     content: "";
     position: absolute;
-    background: rgba(255, 255, 255, 0.12);
+    background: transparent;
     transition: all 120ms ease;
     pointer-events: none;
   }
@@ -78,11 +88,21 @@
 
   .horizontal:hover::before {
     width: 6px;
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--flew-color-border-hover);
   }
 
   .vertical:hover::before {
     height: 6px;
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--flew-color-border-hover);
+  }
+
+  .horizontal.dragging::before {
+    width: 12px;
+    background: var(--flew-color-primary);
+  }
+
+  .vertical.dragging::before {
+    height: 12px;
+    background: var(--flew-color-primary);
   }
 </style>

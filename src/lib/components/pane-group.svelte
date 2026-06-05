@@ -14,8 +14,8 @@
 
   let paneOrder: symbol[] = $state([]);
   let handleOrder: symbol[] = $state([]);
-  let sizeMap: Record<string, string> = $state({});
-  let elMap: Record<string, HTMLElement> = $state({});
+  let sizeMap = $state(new Map<symbol, string>());
+  let elMap = $state(new Map<symbol, HTMLElement>());
 
   function registerPane(id: symbol) {
     paneOrder = [...paneOrder, id];
@@ -34,13 +34,14 @@
   }
 
   function setPaneElement(id: symbol, el: HTMLElement) {
-    elMap = { ...elMap, [id.description!]: el };
+    elMap.set(id, el);
   }
 
   function getPaneFlex(id: symbol): string {
-    return sizeMap[id.description!] ?? "1";
+    return sizeMap.get(id) ?? "1";
   }
 
+  let activeHandleId: symbol | null = $state(null);
   let dragState: {
     prevId: symbol;
     nextId: symbol;
@@ -52,6 +53,12 @@
     nextStartSize: number;
   } | null = $state(null);
 
+  function setCursor(value: string) {
+    document.body.style.cursor = value;
+    document.body.style.userSelect = value === "auto" ? "" : "none";
+    document.body.style.webkitUserSelect = value === "auto" ? "" : "none";
+  }
+
   function handleDragStart(handleId: symbol, e: MouseEvent) {
     const handleIndex = handleOrder.indexOf(handleId);
     if (handleIndex === -1) return;
@@ -60,11 +67,14 @@
     const nextId = paneOrder[handleIndex + 1];
     if (!prevId || !nextId) return;
 
-    const prevEl = elMap[prevId.description!];
-    const nextEl = elMap[nextId.description!];
+    const prevEl = elMap.get(prevId);
+    const nextEl = elMap.get(nextId);
     if (!prevEl || !nextEl) return;
 
     const isHorizontal = dir === "horizontal";
+
+    activeHandleId = handleId;
+    setCursor(isHorizontal ? "col-resize" : "row-resize");
 
     dragState = {
       prevId,
@@ -97,14 +107,13 @@
       ds.prevEl.style.flex = prevFlex;
       ds.nextEl.style.flex = nextFlex;
 
-      sizeMap = {
-        ...sizeMap,
-        [ds.prevId.description!]: prevFlex,
-        [ds.nextId.description!]: nextFlex,
-      };
+      sizeMap.set(ds.prevId, prevFlex);
+      sizeMap.set(ds.nextId, nextFlex);
     }
 
     function onUp() {
+      activeHandleId = null;
+      setCursor("auto");
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -120,11 +129,13 @@
 
   setContext(PANE_GROUP_CTX, {
     get dir() { return dir; },
+    get activeHandleId() { return activeHandleId; },
     registerPane,
     unregisterPane,
     registerHandle,
     unregisterHandle,
     setPaneElement,
+    setPaneFlex: (id: symbol, flex: string) => sizeMap.set(id, flex),
     getPaneFlex,
     handleDragStart,
   });
