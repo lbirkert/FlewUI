@@ -190,7 +190,12 @@ fi
 echo ""
 info "=== Port ==="
 if [[ -z "${PORT:-}" ]]; then
-  echo "PORT=3000" >> .env
+  prompt_default PORT_VAL "Port" "3000"
+  echo "PORT=$PORT_VAL" >> .env
+  PORT="$PORT_VAL"
+  ok "PORT set to $PORT_VAL"
+else
+  ok "PORT already set to $PORT"
 fi
 
 # ── Install npm Dependencies ─────────────────
@@ -289,8 +294,8 @@ ExecStart=$NODE_BIN $LIGHTDRIVE_DIR/build/index.js
 Restart=on-failure
 RestartSec=5
 Environment=NODE_ENV=production
-Environment=PORT=3000
 Environment=HOST=0.0.0.0
+EnvironmentFile=$LIGHTDRIVE_DIR/.env
 
 # Security hardening
 NoNewPrivileges=true
