@@ -22,7 +22,7 @@
     weight = "normal",
     color = "default",
     align = "left",
-    margin = "default",
+    margin = "none",
     as = "p",
     style = "",
     children,

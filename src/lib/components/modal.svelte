@@ -84,9 +84,11 @@
 
   .header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     padding: var(--flew-spacing-4) var(--flew-spacing-4) 0;
+    gap: var(--flew-spacing-2);
+    min-width: 0;
   }
 
   .title {
@@ -94,6 +96,10 @@
     font-weight: 600;
     color: var(--flew-color-text);
     margin: 0;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    flex: 1;
+    min-width: 0;
   }
 
   .close-btn {

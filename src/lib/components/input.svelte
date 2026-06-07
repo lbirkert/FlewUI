@@ -14,7 +14,8 @@
     | "url"
     | "search"
     | "tel"
-    | "date";
+    | "date"
+    | "datetime-local";
 
   type Props = {
     value?: string;
@@ -253,8 +254,22 @@
     box-shadow: none;
   }
 
+  .input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity var(--flew-transition-fast);
+  }
+
+  .input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
   .input::placeholder {
     color: var(--flew-color-text-tertiary);
+  }
+
+  .input::-webkit-datetime-edit {
+    color: inherit;
   }
 
   .input:disabled {

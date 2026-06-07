@@ -28,6 +28,10 @@
 		},
 		"./styles": {
 			"default": "./dist/styles/tokens.css"
+		},
+		"./validators": {
+			"types": "./dist/validators.d.ts",
+			"default": "./dist/validators.js"
 		}
 	},
 	"peerDependencies": {
