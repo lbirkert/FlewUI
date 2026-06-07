@@ -398,13 +398,17 @@
 
   // Move dialog (personal drive only)
   let moveDialogOpen = $state(false);
-  let moveFileId = $state("");
-  let moveFileName = $state("");
+  let moveTargets = $state<{ id: string; isFolder: boolean }[]>([]);
+  let moveTargetNames = $state<string>("");
+  let moveDir = $state<string | null>(null);
   let allFolders = $state<{ id: string; name: string; parentId: string | null }[]>([]);
+  let moveRunning = $state(false);
 
-  async function openMoveDialog(fileId: string, fileName: string) {
-    moveFileId = fileId;
-    moveFileName = fileName;
+  async function openMoveDialog() {
+    moveTargets = selectedItems.map((i: any) => ({ id: i.id, isFolder: i.originalName === undefined }));
+    moveTargetNames = selectedItems.map((i: any) => i.name || i.originalName).join(", ");
+    moveDir = currentFolderId();
+    moveRunning = false;
     const res = await fetch(`/api/drive/${driveId}/folders?all=true`);
     if (res.ok) {
       const r = await res.json();
@@ -416,15 +420,18 @@
   }
 
   async function doMove(folderId: string | null) {
-    const res = await fetch(`/api/drive/${driveId}/files/${moveFileId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folderId }),
-    });
-    if (res.ok) {
-      moveDialogOpen = false;
-      invalidate("app:drive");
+    moveRunning = true;
+    for (const { id, isFolder } of moveTargets) {
+      await fetch(`/api/drive/${driveId}/${isFolder ? "folders" : "files"}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
     }
+    moveRunning = false;
+    moveDialogOpen = false;
+    clearSelection();
+    invalidate("app:drive");
   }
 
   // Shared drive state
@@ -588,7 +595,7 @@
   let singleSelected = $derived(selectedCount === 1 ? selectedItems[0] : null);
   let canRenameSelection = $derived(canRename && !!singleSelected);
   let canShareSelection = $derived(!isShared && !!singleSelected && singleSelected.originalName !== undefined);
-  let canMoveSelection = $derived(!isShared && !!singleSelected && singleSelected.originalName !== undefined);
+  let canMoveSelection = $derived(!isShared && selectedCount > 0);
   let canDeleteSelection = $derived(canDelete && selectedCount > 0);
 
   async function handleBulkDelete() {
@@ -625,8 +632,7 @@
   }
 
   function handleSelectionMove() {
-    if (!singleSelected || singleSelected.originalName === undefined) return;
-    openMoveDialog(singleSelected.id, singleSelected.name || singleSelected.originalName);
+    openMoveDialog();
     clearSelection();
   }
 
@@ -956,16 +962,16 @@
 
 <!-- Move Dialog (personal drive only) -->
 {#if !isShared}
-  <Modal bind:open={moveDialogOpen} title="Move &quot;{moveFileName}&quot;" onClose={() => moveDialogOpen = false} width="480px">
+  <Modal bind:open={moveDialogOpen} title="Move {selectedCount > 1 ? `${selectedCount} items` : `&quot;${moveTargetNames}&quot;`}" onClose={() => moveDialogOpen = false} width="480px">
     <form method="dialog">
       <Flex direction="vertical" gap="var(--flew-spacing-1)">
         <Text size="sm" weight="medium" style="margin-bottom: 4px;">Choose destination:</Text>
-        <button type="button" class="move-option" onclick={() => doMove(null)}>
+        <button type="button" class="move-option" onclick={() => doMove(null)} disabled={moveRunning}>
           <Folder size={16} />
           <Text size="sm">My Drive (root)</Text>
         </button>
-        {#each allFolders.filter(f => f.id !== currentFolderId()) as folder}
-          <button type="button" class="move-option" onclick={() => doMove(folder.id)}>
+        {#each allFolders.filter(f => f.id !== moveDir) as folder}
+          <button type="button" class="move-option" onclick={() => doMove(folder.id)} disabled={moveRunning}>
             <Folder size={16} />
             <Text size="sm">{folder.name}</Text>
           </button>
@@ -973,7 +979,7 @@
       </Flex>
     </form>
     {#snippet footer()}
-      <Button variant="ghost" onclick={() => moveDialogOpen = false}>Cancel</Button>
+      <Button variant="ghost" onclick={() => moveDialogOpen = false} disabled={moveRunning}>Cancel</Button>
     {/snippet}
   </Modal>
 {/if}

@@ -206,6 +206,13 @@ export async function moveFile(id: string, folderId: string | null) {
   });
 }
 
+export async function moveFolder(id: string, parentId: string | null) {
+  await prisma.folder.updateMany({
+    where: { id },
+    data: { parentId },
+  });
+}
+
 export async function renameFile(id: string, name: string) {
   await prisma.file.update({
     where: { id },

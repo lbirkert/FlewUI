@@ -136,7 +136,7 @@
         <div class="preview-video">
           {#key filePreviewId}
             <video controls autoplay class="video-player">
-              <source src="/api/drive/{driveId}/files/{previewFile.id}/download?transcoded=1" />
+              <source src="/api/drive/{driveId}/files/{previewFile.id}/stream" type="video/webm" />
             </video>
           {/key}
         </div>

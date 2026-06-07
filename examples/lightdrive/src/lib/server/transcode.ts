@@ -35,7 +35,7 @@ function ffmpeg(...args: string[]): Promise<void> {
       if (err) reject(err);
       else resolve();
     });
-    child.stderr?.on("data", () => {}); // drain
+    child.stderr?.on("data", () => {});
   });
 }
 
@@ -44,18 +44,19 @@ export async function transcodeVideo(storedName: string): Promise<string | null>
   const transcodedDir = join(UPLOAD_DIR, "transcoded");
   await mkdir(transcodedDir, { recursive: true });
 
-  const outputName = `${storedName}.mp4`;
+  const outputName = `${storedName}.webm`;
   const output = join(transcodedDir, outputName);
 
   try {
     await ffmpeg(
       "-i", input,
-      "-c:v", "libx264",
-      "-preset", "fast",
-      "-crf", "23",
-      "-c:a", "aac",
-      "-b:a", "128k",
-      "-movflags", "+faststart",
+      "-c:v", "libvpx",
+      "-crf", "10",
+      "-b:v", "0",
+      "-cpu-used", "16",
+      "-deadline", "realtime",
+      "-c:a", "libopus",
+      "-b:a", "64k",
       "-y", output,
     );
     return outputName;
@@ -109,7 +110,7 @@ export async function generateVideoThumbnail(storedName: string): Promise<boolea
 
 export function simplifyMimeForDisplay(mime: string): string {
   if (mime.startsWith("video/")) {
-    return "video/mp4";
+    return "video/webm";
   }
   if (mime.startsWith("audio/")) {
     return "audio/mp4";
