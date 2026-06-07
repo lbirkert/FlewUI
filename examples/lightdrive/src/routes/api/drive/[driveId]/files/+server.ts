@@ -2,8 +2,9 @@ import { json } from "@sveltejs/kit";
 import { writeFile, appendFile, rename, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { addFile, getFiles, isImage, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
+import { addFile, getFiles, isImage, isVideo, isAudio, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
 import { generateDocumentPreview, isDocumentType } from "$lib/server/preview";
+import { transcodeVideo, transcodeAudio, generateVideoThumbnail } from "$lib/server/transcode";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
@@ -64,7 +65,10 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     async function createRecord(stored: string, finalPath: string) {
       const { size } = await stat(finalPath);
       const img = isImage(fileType);
+      const vid = isVideo(fileType, originalName);
+      const aud = isAudio(fileType, originalName);
       let hasPreview = false;
+      let transcodedName: string | null = null;
       if (img) {
         try {
           const sharp = (await import("sharp")).default;
@@ -74,10 +78,22 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
             .toFile(join(UPLOAD_DIR, "previews", `${stored}.webp`));
           hasPreview = true;
         } catch { /* preview failed */ }
+      } else if (vid) {
+        const [thumbOk, transcodeResult] = await Promise.all([
+          generateVideoThumbnail(stored),
+          transcodeVideo(stored),
+        ]);
+        hasPreview = thumbOk;
+        transcodedName = transcodeResult;
+      } else if (aud) {
+        transcodedName = await transcodeAudio(stored);
+        if (isDocumentType(fileType, originalName)) {
+          hasPreview = await generateDocumentPreview(stored, originalName, fileType);
+        }
       } else if (isDocumentType(fileType, originalName)) {
         hasPreview = await generateDocumentPreview(stored, originalName, fileType);
       }
-      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview);
+      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, transcodedName);
       return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
     }
 
@@ -126,10 +142,14 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     const ext = file.name.split(".").pop() ?? "";
     const storedName = `${randomBytes(16).toString("hex")}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(join(UPLOAD_DIR, storedName), buffer);
+    const filePath = join(UPLOAD_DIR, storedName);
+    await writeFile(filePath, buffer);
 
     const img = isImage(file.type);
+    const vid = isVideo(file.type, file.name);
+    const aud = isAudio(file.type, file.name);
     let hasPreview = false;
+    let transcodedName: string | null = null;
 
     if (img) {
       try {
@@ -140,11 +160,23 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
           .toFile(join(UPLOAD_DIR, "previews", `${storedName}.webp`));
         hasPreview = true;
       } catch { /* preview failed */ }
+    } else if (vid) {
+      const [thumbOk, transcodeResult] = await Promise.all([
+        generateVideoThumbnail(storedName),
+        transcodeVideo(storedName),
+      ]);
+      hasPreview = thumbOk;
+      transcodedName = transcodeResult;
+    } else if (aud) {
+      transcodedName = await transcodeAudio(storedName);
+      if (isDocumentType(file.type, file.name)) {
+        hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
+      }
     } else if (isDocumentType(file.type, file.name)) {
       hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
     }
 
-    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview);
+    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, transcodedName);
     files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
   }
 

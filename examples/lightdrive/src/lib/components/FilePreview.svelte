@@ -2,7 +2,7 @@
   import { Button, Flex, Text, Spinner } from "flewui";
   import {
     File, Download, Trash2, X, Share2, ChevronLeft, ChevronRight,
-    Image, FileText, FileSpreadsheet, Save, Music
+    Image, FileText, FileSpreadsheet, Save, Music, Video
   } from "@lucide/svelte";
   import { formatSize, formatFullDate, getPreviewUrl } from "./helpers";
 
@@ -132,6 +132,14 @@
             </audio>
           {/key}
         </div>
+      {:else if previewCategory === "video"}
+        <div class="preview-video">
+          {#key filePreviewId}
+            <video controls autoplay class="video-player">
+              <source src="/api/drive/{driveId}/files/{previewFile.id}/download?transcoded=1" />
+            </video>
+          {/key}
+        </div>
       {:else}
         <Flex align="center" justify="center" style="flex: 1;" direction="vertical" gap="var(--flew-spacing-3)">
           <File size={48} />
@@ -159,6 +167,8 @@
             <FileText size={16} />
           {:else if previewCategory === "audio"}
             <Music size={16} />
+          {:else if previewCategory === "video"}
+            <Video size={16} />
           {:else}
             <File size={16} />
           {/if}
@@ -285,9 +295,24 @@
     color: var(--flew-color-text-secondary);
   }
 
+  .preview-video {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow: hidden;
+  }
+
   .audio-player {
     width: 100%;
     max-width: 400px;
+  }
+
+  .video-player {
+    max-width: 100%;
+    max-height: calc(100% - 80px);
+    border-radius: var(--flew-radius-sm);
   }
 
   .preview-footer {

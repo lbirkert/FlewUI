@@ -49,9 +49,10 @@ model File {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   folderId     String?
   folder       Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  downloads    Int      @default(0)
-  hasPreview   Boolean  @default(false)
-  uploadedAt   DateTime @default(now())
+  downloads      Int      @default(0)
+  hasPreview     Boolean  @default(false)
+  uploadedAt     DateTime @default(now())
+  transcodedName String?
   shares       Share[]
 }
 

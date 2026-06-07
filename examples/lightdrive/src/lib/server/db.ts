@@ -113,6 +113,16 @@ export function isAudio(mime: string): boolean {
   return AUDIO_TYPES.has(mime);
 }
 
+export const VIDEO_TYPES = new Set([
+  "video/mp4", "video/webm", "video/x-matroska", "video/avi", "video/x-msvideo",
+  "video/quicktime", "video/x-ms-wmv", "video/x-flv", "video/mpeg", "video/3gpp",
+  "video/x-m4v", "video/x-ms-asf",
+]);
+
+export function isVideo(mime: string): boolean {
+  return VIDEO_TYPES.has(mime);
+}
+
 export async function addFile(
   userId: string,
   storedName: string,
@@ -121,9 +131,10 @@ export async function addFile(
   type: string,
   folderId?: string | null,
   hasPreview = false,
+  transcodedName?: string | null,
 ) {
   return prisma.file.create({
-    data: { storedName, originalName, size, type, userId, folderId: folderId ?? null, hasPreview },
+    data: { storedName, originalName, size, type, userId, folderId: folderId ?? null, hasPreview, transcodedName: transcodedName ?? null },
   });
 }
 

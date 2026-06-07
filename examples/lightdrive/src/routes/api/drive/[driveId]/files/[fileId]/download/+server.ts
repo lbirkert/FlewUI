@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { getFile, incrementDownloads, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
+import { simplifyMimeForDisplay } from "$lib/server/transcode";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
@@ -27,7 +28,9 @@ export const GET: RequestHandler = async ({ params, url, request, locals }) => {
     error(404, "File not found");
   }
 
-  const filePath = join(UPLOAD_DIR, record.storedName);
+  const useTranscoded = url.searchParams.has("transcoded") && record.transcodedName;
+  const filePath = join(UPLOAD_DIR, useTranscoded ? "transcoded" : "", useTranscoded ? record.transcodedName! : record.storedName);
+  const contentType = useTranscoded ? simplifyMimeForDisplay(record.type) : record.type;
 
   try {
     const fileStat = await stat(filePath);
@@ -56,7 +59,7 @@ export const GET: RequestHandler = async ({ params, url, request, locals }) => {
         headers: {
           "Content-Range": `bytes ${start}-${end}/${fileSize}`,
           "Accept-Ranges": "bytes",
-          "Content-Type": record.type || "application/octet-stream",
+          "Content-Type": contentType,
           "Content-Length": String(chunkSize),
           "Content-Disposition": `inline; filename="${record.originalName}"`,
         },
@@ -68,7 +71,7 @@ export const GET: RequestHandler = async ({ params, url, request, locals }) => {
     const inline = url.searchParams.has("inline");
     return new Response(buffer, {
       headers: {
-        "Content-Type": record.type || "application/octet-stream",
+        "Content-Type": contentType,
         "Content-Disposition": inline ? `inline; filename="${record.originalName}"` : `attachment; filename="${record.originalName}"`,
         "Content-Length": String(buffer.length),
         "Accept-Ranges": "bytes",

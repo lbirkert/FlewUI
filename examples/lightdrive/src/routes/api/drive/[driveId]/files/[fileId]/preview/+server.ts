@@ -2,7 +2,9 @@ import { error } from "@sveltejs/kit";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { getFile, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
+import { getFile, getDriveContext, isFileInSharedFolder, isImage, isVideo } from "$lib/server/db";
+import { generateDocumentPreview, isDocumentType } from "$lib/server/preview";
+import { generateVideoThumbnail } from "$lib/server/transcode";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
@@ -28,7 +30,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   }
 
   const previewPath = join(UPLOAD_DIR, "previews", `${file.storedName}.webp`);
-  if (!existsSync(previewPath)) error(404, "Preview not found");
+
+  if (!existsSync(previewPath)) {
+    let generated = false;
+    try {
+      if (isImage(file.type)) {
+        const sharp = (await import("sharp")).default;
+        await sharp(join(UPLOAD_DIR, file.storedName))
+          .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 60 })
+          .toFile(previewPath);
+        generated = true;
+      } else if (isVideo(file.type, file.originalName)) {
+        generated = await generateVideoThumbnail(file.storedName);
+      } else if (isDocumentType(file.type, file.originalName)) {
+        generated = await generateDocumentPreview(file.storedName, file.originalName, file.type);
+      }
+    } catch {}
+    if (generated) {
+      try {
+        const { updateFilePreview } = await import("$lib/server/db");
+        await updateFilePreview(file.id, true);
+      } catch {}
+    }
+    if (!existsSync(previewPath)) error(404, "Preview not found");
+  }
 
   const buffer = await readFile(previewPath);
   return new Response(buffer, {
