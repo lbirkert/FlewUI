@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import prisma, { getFile, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
+import { prisma, getFile, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
 import { getTranscodedPath } from "$lib/server/transcode";
 import { worker } from "$lib/server/transcode-worker";
 import type { RequestHandler } from "./$types";
