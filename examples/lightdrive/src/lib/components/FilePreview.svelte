@@ -302,6 +302,7 @@
     justify-content: center;
     padding: 16px;
     overflow: hidden;
+    position: relative;
   }
 
   .audio-player {

@@ -2,12 +2,13 @@ import { error } from "@sveltejs/kit";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { getFile, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
+import { getFile, getDriveContext, isFileInSharedFolder, prisma } from "$lib/server/db";
+import { transcodeVideo, getTranscodedPath } from "$lib/server/transcode";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
 
-export const GET: RequestHandler = async ({ params, request, locals }) => {
+export const GET: RequestHandler = async ({ params, request, url, locals }) => {
   const ctx = await getDriveContext(params.driveId, locals);
   if (!ctx) error(404, "Drive not found");
 
@@ -27,12 +28,23 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
     error(404, "File not found");
   }
 
-  const filePath = record.transcodedName
-    ? join(UPLOAD_DIR, "transcoded", record.transcodedName)
-    : join(UPLOAD_DIR, record.storedName);
+  const quality = url.searchParams.get("quality") || undefined;
 
-  try {
-    const fileStat = await stat(filePath);
+  async function tryServe(): Promise<Response | null> {
+
+    if(!record.transcodedName)
+      return null;
+
+    const filePath = join(UPLOAD_DIR, getTranscodedPath(record.storedName, quality));
+    console.log(filePath);
+
+    let fileStat;
+    try {
+      fileStat = await stat(filePath);
+    } catch {
+      return null;
+    }
+
     const fileSize = fileStat.size;
     const rangeHeader = request.headers.get("range");
 
@@ -72,7 +84,25 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
         "Accept-Ranges": "bytes",
       },
     });
-  } catch {
-    error(404, "File not found on disk");
   }
+
+  let response = await tryServe();
+  if (response) return response;
+
+  // File not found on disk — try transcoding on demand
+  if (!record.type.startsWith("video/")) error(404, "File not found on disk");
+
+  console.log(`[stream] transcoding ${record.storedName} on demand`);
+  const newTranscoded = await transcodeVideo(record.storedName);
+  if (!newTranscoded) error(404, "File not found on disk");
+
+  await prisma.file.update({
+    where: { id: record.id },
+    data: { transcodedName: newTranscoded },
+  });
+  record.transcodedName = newTranscoded;
+
+  response = await tryServe();
+  if (!response) error(404, "File not found on disk");
+  return response;
 };

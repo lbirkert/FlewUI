@@ -35,7 +35,7 @@ function ffmpeg(...args: string[]): Promise<void> {
       if (err) reject(err);
       else resolve();
     });
-    child.stderr?.on("data", () => {});
+    child.stderr?.on("data", (d) => process.stderr.write(d));
   });
 }
 
@@ -47,22 +47,33 @@ export async function transcodeVideo(storedName: string): Promise<string | null>
   const outputName = `${storedName}.webm`;
   const output = join(transcodedDir, outputName);
 
+  const args = [
+    "-i", input,
+    "-c:v", "libvpx-vp9",
+    "-crf", "50",
+    "-b:v", "0",
+    "-cpu-used", "0",
+    "-deadline", "good",
+    "-row-mt", "1",
+    "-vf", "scale=640:360:force_original_aspect_ratio=decrease",
+    "-c:a", "libopus",
+    "-b:a", "32k",
+    "-y", output,
+  ];
+
+  console.log(`[transcode] starting ${outputName}`);
   try {
-    await ffmpeg(
-      "-i", input,
-      "-c:v", "libvpx",
-      "-crf", "10",
-      "-b:v", "0",
-      "-cpu-used", "16",
-      "-deadline", "realtime",
-      "-c:a", "libopus",
-      "-b:a", "64k",
-      "-y", output,
-    );
+    await ffmpeg(...args);
+    console.log(`[transcode] done ${outputName}`);
     return outputName;
-  } catch {
+  } catch (e) {
+    console.log(`[transcode] failed ${outputName}:`, e);
     return null;
   }
+}
+
+export function getTranscodedPath(storedName: string, quality?: string): string {
+  return join("transcoded", `${storedName}.webm`);
 }
 
 export async function transcodeAudio(storedName: string): Promise<string | null> {
