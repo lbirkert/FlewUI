@@ -2,11 +2,19 @@
   import { page } from "$app/stores";
   import { Button, Flex, Text, Avatar } from "flewui";
   import "flewui/styles";
-  import { Folder, BarChart3, LogIn, LogOut, User, Menu } from "@lucide/svelte";
+  import { Folder, BarChart3, LogIn, LogOut, User, Menu, Link, HardDrive } from "@lucide/svelte";
 
-  let { children, user: serverUser }: { children: import("svelte").Snippet; user: { id: string; name: string; email: string } | null } = $props();
+  let {
+    children,
+    user: serverUser,
+  }: {
+    children: import("svelte").Snippet;
+    user: { id: string; name: string; email: string } | null;
+  } = $props();
 
-  let user = $state<{ id: string; name: string; email: string } | null>(serverUser);
+  let user = $state<{ id: string; name: string; email: string } | null>(
+    serverUser,
+  );
   let userMenuOpen = $state(false);
   let mobileMenuOpen = $state(false);
 
@@ -17,13 +25,20 @@
       const data = await res.json();
       user = data.user;
     }
-    const onResize = () => { if (window.innerWidth > 768) mobileMenuOpen = false; };
+    const onResize = () => {
+      if (window.innerWidth > 768) mobileMenuOpen = false;
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   });
 
   function getInitials(name: string) {
-    return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   }
 
   const links = [
@@ -35,23 +50,23 @@
 <div class="app-shell">
   <header class="app-header">
     <Flex gap="var(--flew-spacing-3)" align="center">
-      <a href="/" class="logo">
-        <Folder size={20} />
+      <a href="/app" class="logo">
+        <HardDrive size={20} />
         <Text weight="semibold">LightDrive</Text>
       </a>
       <!-- Desktop nav -->
       <nav class="desktop-nav">
         <Flex gap="var(--flew-spacing-1)">
           {#each links as { href, label, icon: Icon }}
-            <a href={href} class="nav-link" class:active={$page.url.pathname.startsWith(href)}>
-              <Icon size={14} /> <Text size="sm">{label}</Text>
+            <a
+              {href}
+              class="nav-link"
+              class:active={$page.url.pathname.startsWith(href)}
+            >
+              <Icon size={14} />
+              <Text size="sm">{label}</Text>
             </a>
           {/each}
-          {#if user}
-            <a href="/app/account" class="nav-link" class:active={$page.url.pathname.startsWith("/app/account")}>
-              <User size={14} /> <Text size="sm">Account</Text>
-            </a>
-          {/if}
         </Flex>
       </nav>
       <div style="flex: 1;"></div>
@@ -59,16 +74,38 @@
       <div class="desktop-nav">
         {#if user}
           <div class="user-menu">
-            <button class="user-btn" onclick={() => userMenuOpen = !userMenuOpen} onblur={() => setTimeout(() => userMenuOpen = false, 150)}>
+            <button
+              class="user-btn"
+              onclick={() => (userMenuOpen = !userMenuOpen)}
+              onblur={() => setTimeout(() => (userMenuOpen = false), 150)}
+            >
               <Avatar initials={getInitials(user.name)} size="sm" />
               <Text size="sm" color="secondary">{user.name}</Text>
             </button>
             {#if userMenuOpen}
               <div class="user-dropdown">
-                <a href="/app/account" class="dropdown-item" onclick={() => userMenuOpen = false}>
+                <a
+                  href="/app/account"
+                  class="dropdown-item"
+                  onclick={() => (userMenuOpen = false)}
+                >
                   <Text size="sm">Account</Text>
                 </a>
-                <button class="dropdown-item" onclick={async () => { userMenuOpen = false; await fetch("/api/auth/logout", { method: "POST" }); location.href = "/"; }}>
+                <a
+                  href="/app/account/shares"
+                  class="dropdown-item"
+                  onclick={() => (userMenuOpen = false)}
+                >
+                  <Text size="sm">Share Links</Text>
+                </a>
+                <button
+                  class="dropdown-item"
+                  onclick={async () => {
+                    userMenuOpen = false;
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    location.href = "/";
+                  }}
+                >
                   <Text size="sm"><LogOut size={14} /> Sign Out</Text>
                 </button>
               </div>
@@ -76,12 +113,18 @@
           </div>
         {:else}
           <a href="/app/auth">
-            <Button variant="ghost" size="sm"><LogIn size={14} /> Sign In</Button>
+            <Button variant="ghost" size="sm"
+              ><LogIn size={14} /> Sign In</Button
+            >
           </a>
         {/if}
       </div>
       <!-- Mobile burger -->
-      <button class="mobile-burger" onclick={() => mobileMenuOpen = !mobileMenuOpen} aria-label="Menu">
+      <button
+        class="mobile-burger"
+        onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+        aria-label="Menu"
+      >
         <Menu size={22} />
       </button>
     </Flex>
@@ -89,20 +132,24 @@
 
   <div class="app-content">
     {#if mobileMenuOpen}
-      <div class="mobile-overlay" onclick={() => mobileMenuOpen = false}>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="mobile-overlay" onclick={() => (mobileMenuOpen = false)}>
         <div class="mobile-menu-items" onclick={(e) => e.stopPropagation()}>
           {#each links as { href, label, icon: Icon }}
-            <a href={href} class="mobile-nav-link" class:active={$page.url.pathname.startsWith(href)} onclick={() => mobileMenuOpen = false}>
+            <a
+              {href}
+              class="mobile-nav-link"
+              class:active={$page.url.pathname.startsWith(href)}
+              onclick={() => (mobileMenuOpen = false)}
+            >
               <Icon size={20} />
               <Text size="lg">{label}</Text>
             </a>
           {/each}
           {#if user}
-            <a href="/app/account" class="mobile-nav-link" class:active={$page.url.pathname.startsWith("/app/account")} onclick={() => mobileMenuOpen = false}>
-              <User size={20} />
-              <Text size="lg">Account</Text>
-            </a>
             <div class="mobile-divider"></div>
+
             <div class="mobile-user-info">
               <Avatar initials={getInitials(user.name)} size="md" />
               <div>
@@ -110,13 +157,42 @@
                 <Text size="xs" color="tertiary">{user.email}</Text>
               </div>
             </div>
-            <button class="mobile-nav-link" onclick={async () => { mobileMenuOpen = false; await fetch("/api/auth/logout", { method: "POST" }); location.href = "/"; }}>
+            <a
+              href="/app/account"
+              class="mobile-nav-link"
+              class:active={$page.url.pathname == "/app/account"}
+              onclick={() => (mobileMenuOpen = false)}
+            >
+              <User size={20} />
+              <Text size="lg">Account</Text>
+            </a>
+            <a
+              href="/app/account/shares"
+              class="mobile-nav-link"
+              class:active={$page.url.pathname.startsWith("/app/account/shares")}
+              onclick={() => (mobileMenuOpen = false)}
+            >
+              <Link size={20} />
+              <Text size="lg">Share Links</Text>
+            </a>
+            <button
+              class="mobile-nav-link"
+              onclick={async () => {
+                mobileMenuOpen = false;
+                await fetch("/api/auth/logout", { method: "POST" });
+                location.href = "/";
+              }}
+            >
               <LogOut size={20} />
               <Text size="lg">Sign Out</Text>
             </button>
           {:else}
             <div class="mobile-divider"></div>
-            <a href="/app/auth" class="mobile-nav-link" onclick={() => mobileMenuOpen = false}>
+            <a
+              href="/app/auth"
+              class="mobile-nav-link"
+              onclick={() => (mobileMenuOpen = false)}
+            >
               <LogIn size={20} />
               <Text size="lg">Sign In</Text>
             </a>
@@ -130,7 +206,11 @@
   </div>
 </div>
 
-<svelte:window onkeydown={(e) => { if (e.key === "Escape") mobileMenuOpen = false; }} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "Escape") mobileMenuOpen = false;
+  }}
+/>
 
 <style>
   .app-shell {

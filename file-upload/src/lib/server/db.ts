@@ -80,7 +80,14 @@ export async function getFolder(id: string) {
 }
 
 export async function deleteFolder(id: string) {
+  const children = await getSubFolders(id);
+  for (const child of children) {
+    await deleteFolder(child.id);
+  }
+  const files = await prisma.file.findMany({ where: { folderId: id }, select: { id: true, storedName: true } });
+  await prisma.file.deleteMany({ where: { folderId: id } });
   await prisma.folder.deleteMany({ where: { id } });
+  return { deletedFiles: files.map(f => f.storedName) };
 }
 
 export async function getFiles(userId: string, folderId?: string | null) {

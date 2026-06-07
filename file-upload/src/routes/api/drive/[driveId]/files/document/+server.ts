@@ -2,7 +2,7 @@ import { json } from "@sveltejs/kit";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { addFile } from "$lib/server/db";
+import { addFile, getDriveContext } from "$lib/server/db";
 import { generateDocumentPreview } from "$lib/server/preview";
 import type { RequestHandler } from "./$types";
 
@@ -14,8 +14,10 @@ const typeConfig: Record<string, { ext: string; mime: string; label: string }> =
   csv: { ext: ".csv", mime: "text/csv", label: "CSV" },
 };
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) return json({ error: "Not authenticated" }, { status: 401 });
+export const POST: RequestHandler = async ({ request, locals, params }) => {
+  const ctx = await getDriveContext(params.driveId, locals);
+  if (!ctx) return json({ error: "Drive not found" }, { status: 404 });
+  if (ctx.type === "share") return json({ error: "Create document not available in shared drives" }, { status: 403 });
 
   const body = await request.json();
   const docType = body.type as string;
@@ -50,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   await writeFile(storedPath, buffer);
   const hasPreview = await generateDocumentPreview(storedName, fullName, config.mime);
-  const record = await addFile(locals.user.id, storedName, fullName, buffer.length, config.mime, folderId, hasPreview);
+  const record = await addFile(ctx.userId, storedName, fullName, buffer.length, config.mime, folderId, hasPreview);
 
   return json({
     file: {

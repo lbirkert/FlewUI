@@ -227,7 +227,7 @@
       "Delete Folder",
       "Delete this folder and all its contents?",
       async () => {
-        const res = await fetch(`/api/folders/${folderId}`, { method: "DELETE" });
+        const res = await fetch(`/api/drive/${driveId}/folders/${folderId}`, { method: "DELETE" });
         if (res.ok) invalidate("app:drive");
       }
     );
@@ -256,7 +256,7 @@
         showConfirm("Error", r.error || "Failed to create folder", () => {}, "primary");
       }
     } else {
-      const res = await fetch("/api/files/document", {
+      const res = await fetch(`/api/drive/${driveId}/files/document`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newItemName.trim(), type: newItemType, folderId: currentFolderId() }),

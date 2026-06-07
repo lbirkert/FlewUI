@@ -11,7 +11,7 @@ const spec = {
     title: "LightDrive API",
     version: "2.0.0",
     description:
-      "RESTful API for LightDrive — a personal cloud storage solution. Use `/api/drive/{driveId}/...` endpoints for drive-aware access (works with both user IDs and share tokens). Legacy `/api/files` and `/api/folders` endpoints require session auth.\n\nBase URL: `/api`",
+      "RESTful API for LightDrive — a personal cloud storage solution. All file and folder operations go through `/api/drive/{driveId}/` endpoints.\n\nBase URL: `/api`",
   },
   servers: [{ url: "/", description: "Local development" }],
   paths: {
@@ -119,194 +119,6 @@ const spec = {
           "200": { description: "Password changed" },
           "401": { description: "Not authenticated or incorrect current password" },
         },
-      },
-    },
-    "/api/folders": {
-      get: {
-        tags: ["Folders"],
-        summary: "List folders (optionally nested)",
-        parameters: [
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token for shared drive" },
-          { name: "parentId", in: "query", required: false, schema: { type: "string" }, description: "If omitted, returns root folders (or shared folder root)" },
-          { name: "all", in: "query", required: false, schema: { type: "string", enum: ["true"] }, description: "List all folders for the move dialog (not available for shared drives)" },
-        ],
-        responses: {
-          "200": { description: "Folder list" },
-        },
-      },
-      post: {
-        tags: ["Folders"],
-        summary: "Create a new folder",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["name"],
-                properties: {
-                  name: { type: "string" },
-                  parentId: { type: "string", description: "Parent folder ID for nested folders" },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          "201": { description: "Folder created" },
-          "400": { description: "Validation error" },
-        },
-      },
-    },
-    "/api/folders/{id}": {
-      delete: {
-        tags: ["Folders"],
-        summary: "Delete a folder (cascades to children)",
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: {
-          "200": { description: "Folder deleted" },
-          "404": { description: "Folder not found" },
-        },
-      },
-    },
-    "/api/files": {
-      get: {
-        tags: ["Files"],
-        summary: "List files in a folder",
-        parameters: [
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token for shared drive" },
-          { name: "folderId", in: "query", required: false, schema: { type: "string" }, description: "If omitted, returns root-level files (or shared folder root)" },
-        ],
-        responses: { "200": { description: "File list" } },
-      },
-      post: {
-        tags: ["Files"],
-        summary: "Upload files (multipart)",
-        parameters: [{ name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token with upload permission for shared drive" }],
-        requestBody: {
-          required: true,
-          content: {
-            "multipart/form-data": {
-              schema: {
-                type: "object",
-                required: ["files"],
-                properties: {
-                  files: { type: "array", items: { type: "string", format: "binary" }, description: "One or more files to upload" },
-                  folderId: { type: "string", description: "Target folder ID (optional)" },
-                },
-              },
-            },
-          },
-        },
-        responses: { "200": { description: "Upload result" } },
-      },
-    },
-    "/api/files/document": {
-      post: {
-        tags: ["Files"],
-        summary: "Create a new blank document",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["type", "name"],
-                properties: {
-                  type: { type: "string", enum: ["txt", "md", "csv"], description: "Document type" },
-                  name: { type: "string", description: "File name (extension added automatically)" },
-                  folderId: { type: "string", description: "Target folder ID (optional)" },
-                },
-              },
-            },
-          },
-        },
-        responses: { "200": { description: "Document created" } },
-      },
-    },
-    "/api/files/{id}/content": {
-      get: {
-        tags: ["Files"],
-        summary: "Get file content for preview/editing",
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token for shared drive" },
-        ],
-        responses: {
-          "200": { description: "Content: text for .txt, HTML for .docx, JSON sheet data for .xlsx" },
-          "401": { description: "Not authenticated" },
-          "404": { description: "File not found" },
-        },
-      },
-      put: {
-        tags: ["Files"],
-        summary: "Save file content (editable types: txt, xlsx)",
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token with edit permission" },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: { content: { description: "For txt: string. For xlsx: Record<string, any[][]>" } },
-              },
-            },
-          },
-        },
-        responses: { "200": { description: "Content saved" }, "400": { description: "File type not editable" } },
-      },
-    },
-    "/api/files/{id}": {
-      delete: {
-        tags: ["Files"],
-        summary: "Delete a file",
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive, or share token with delete permission" },
-        ],
-        responses: { "200": { description: "File deleted" }, "404": { description: "File not found" } },
-      },
-      patch: {
-        tags: ["Files"],
-        summary: "Move a file to a different folder",
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-          { name: "driveId", in: "query", required: true, schema: { type: "string" }, description: "User ID for personal drive (not available for shared drives)" },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: { folderId: { type: "string", nullable: true, description: "Target folder ID (null for root)" } },
-              },
-            },
-          },
-        },
-        responses: { "200": { description: "File moved" } },
-      },
-    },
-    "/api/files/{id}/download": {
-      get: {
-        tags: ["Files"],
-        summary: "Download a file (or view inline with ?inline=1)",
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-          { name: "inline", in: "query", required: false, schema: { type: "string", enum: ["1"] }, description: "Set to 1 for inline Content-Disposition (for PDF embedding)" },
-        ],
-        responses: { "200": { description: "File binary stream", content: { "application/octet-stream": {} } }, "404": { description: "File not found" } },
-      },
-    },
-    "/api/files/{id}/preview": {
-      get: {
-        tags: ["Files"],
-        summary: "Get file preview image (WebP thumbnail)",
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { "200": { description: "WebP preview image", content: { "image/webp": {} } }, "404": { description: "Preview not found" } },
       },
     },
     "/api/shares": {
@@ -432,7 +244,7 @@ const spec = {
       },
       patch: {
         tags: ["Drive"],
-        summary: "Move a file within a drive (user drives only)",
+        summary: "Move a file within a drive",
         parameters: [
           { name: "driveId", in: "path", required: true, schema: { type: "string" } },
           { name: "fileId", in: "path", required: true, schema: { type: "string" } },
@@ -496,7 +308,7 @@ const spec = {
       },
       post: {
         tags: ["Drive"],
-        summary: "Create a folder in a drive (user drives only)",
+        summary: "Create a folder in a drive (requires upload permission for shares)",
         parameters: [{ name: "driveId", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           required: true,
@@ -514,6 +326,65 @@ const spec = {
           },
         },
         responses: { "201": { description: "Folder created" } },
+      },
+    },
+    "/api/drive/{driveId}/info": {
+      get: {
+        tags: ["Drive"],
+        summary: "Get drive info — returns share metadata or indicates personal drive",
+        parameters: [{ name: "driveId", in: "path", required: true, schema: { type: "string" }, description: "User ID or share token" }],
+        responses: {
+          "200": { description: 'Drive info: { type: "personal" } or { type: "share", permissions, name, expiry, breadcrumbs, file? }' },
+        },
+      },
+    },
+    "/api/drive/{driveId}/files/{fileId}/preview": {
+      get: {
+        tags: ["Drive"],
+        summary: "Get file preview thumbnail (WebP)",
+        parameters: [
+          { name: "driveId", in: "path", required: true, schema: { type: "string" } },
+          { name: "fileId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: {
+          "200": { description: "WebP preview image", content: { "image/webp": {} } },
+          "404": { description: "Preview not found" },
+        },
+      },
+    },
+    "/api/drive/{driveId}/files/document": {
+      post: {
+        tags: ["Drive"],
+        summary: "Create a new blank document in a drive",
+        parameters: [{ name: "driveId", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["type", "name"],
+                properties: {
+                  type: { type: "string", enum: ["txt", "md", "csv"] },
+                  name: { type: "string" },
+                  folderId: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: { "200": { description: "Document created" } },
+      },
+    },
+    "/api/drive/{driveId}/folders/{folderId}": {
+      delete: {
+        tags: ["Drive"],
+        summary: "Delete a folder and all its contents recursively",
+        parameters: [
+          { name: "driveId", in: "path", required: true, schema: { type: "string" } },
+          { name: "folderId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { "200": { description: "Folder deleted" } },
       },
     },
   },
