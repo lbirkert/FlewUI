@@ -4,13 +4,22 @@ Self-hosted cloud storage with file sharing, previews, and analytics.
 
 Built with [SvelteKit](https://kit.svelte.dev/), [Prisma](https://www.prisma.io/), and [FlewUI](https://github.com/lbirkert/FlewUi).
 
-## Quick Start
+## Quick Start (local dev)
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 bun run dev
 ```
+
+## Raspberry Pi (production)
+
+```bash
+chmod +x setup-pi.sh
+./setup-pi.sh
+```
+
+The script installs Node.js, builds the app, and registers it as a systemd service running on port 3000.
 
 ## Manual Setup
 
