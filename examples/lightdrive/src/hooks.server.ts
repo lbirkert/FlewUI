@@ -1,3 +1,4 @@
+import "dotenv/config";
 import type { Handle } from "@sveltejs/kit";
 import { getSessionUser } from "$lib/server/db";
 

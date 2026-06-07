@@ -288,9 +288,6 @@ if [[ ! -f "$SERVICE_FILE" ]]; then
 
   # Read PORT from .env for an explicit Environment= directive
   # (EnvironmentFile is fragile with quoted values from other variables)
-  LD_PORT="$(grep "^PORT=" "$LIGHTDRIVE_DIR/.env" 2>/dev/null | tail -1 | sed 's/^PORT=//' | tr -d '"')"
-  LD_PORT="${LD_PORT:-3000}"
-
   sudo tee "$SERVICE_FILE" > /dev/null <<UNIT
 [Unit]
 Description=LightDrive — Self-hosted file sharing
@@ -301,12 +298,11 @@ After=network.target
 Type=exec
 User=$USER
 WorkingDirectory=$LIGHTDRIVE_DIR
-ExecStart=$NODE_BIN $LIGHTDRIVE_DIR/build/index.js
+ExecStart=$NODE_BIN --import dotenv/config $LIGHTDRIVE_DIR/build/index.js
 Restart=on-failure
 RestartSec=5
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
-Environment=PORT=$LD_PORT
 
 # Security hardening
 NoNewPrivileges=true
