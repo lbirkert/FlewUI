@@ -53,6 +53,7 @@
 	],
 	"dependencies": {
 		"@lucide/svelte": "^1.17.0",
+		"@sveltejs/adapter-node": "^5.5.4",
 		"chart.js": "^4.5.1",
 		"highlight.js": "^11.11.1",
 		"lucide-svelte": "^1.0.1",
