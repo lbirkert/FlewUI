@@ -304,13 +304,6 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
 
-# Security hardening
-NoNewPrivileges=true
-ProtectHome=true
-ProtectSystem=full
-PrivateTmp=true
-ReadWritePaths=$LIGHTDRIVE_DIR/uploads $LIGHTDRIVE_DIR/data $LIGHTDRIVE_DIR/build
-
 [Install]
 WantedBy=multi-user.target
 UNIT
