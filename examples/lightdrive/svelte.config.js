@@ -6,7 +6,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		adapter: adapter()
+		adapter: adapter({ maxBodySize: 100 * 1024 * 1024 })
 	}
 };
 
