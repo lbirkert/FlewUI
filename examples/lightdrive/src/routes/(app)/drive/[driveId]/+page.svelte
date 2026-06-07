@@ -4,7 +4,7 @@
   import { Button, Card, Flex, Input, Text, Modal, Select, Tag, Divider, Heading } from "flewui";
   import {
     Upload, File, Folder, Trash2,
-    X, Share2, Clock, MoveRight, Save
+    X, Share2, Clock, MoveRight, Save, Pen
   } from "@lucide/svelte";
   import { formatSize, formatDate, formatFullDate, getPreviewUrl, getFileIconClass } from "$lib/components/helpers";
   import Toolbar from "$lib/components/Toolbar.svelte";
@@ -196,6 +196,7 @@
   }
 
   function navigateTo(folderId: string | null) {
+    clearSelection();
     const base = `/drive/${driveId}`;
     const url = folderId ? `${base}?folder=${folderId}` : base;
     goto(url);
@@ -467,6 +468,7 @@
   let previewError = $state("");
 
   function openFilePreview(fileId: string) {
+    clearSelection();
     const params = new URLSearchParams();
     const folder = currentFolderId();
     if (folder) params.set("folder", folder);
@@ -551,12 +553,81 @@
   }
 
   function handleDeletePreview(id: string) {
-    if (isShared && hasPermission("delete")) {
+    if (isShared && hasPermission("structure")) {
       deleteTargetId = id;
       showDeleteConfirm = true;
     } else if (!isShared) {
       handleDelete(id);
     }
+  }
+
+  // Selection
+  let selectedIds = $state(new Set<string>());
+  let selectedCount = $derived(selectedIds.size);
+  let hasSelection = $derived(selectedCount > 0);
+
+  function toggleSelection(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    selectedIds = next;
+  }
+
+  function clearSelection() {
+    selectedIds = new Set();
+  }
+
+  let selectedItems = $derived.by(() => {
+    const ids = selectedIds;
+    return [
+      ...displayFolders.filter((f: any) => ids.has(f.id)),
+      ...displayFiles.filter((f: any) => ids.has(f.id)),
+    ];
+  });
+
+  let singleSelected = $derived(selectedCount === 1 ? selectedItems[0] : null);
+  let canRenameSelection = $derived(canRename && !!singleSelected);
+  let canShareSelection = $derived(!isShared && !!singleSelected && singleSelected.originalName !== undefined);
+  let canMoveSelection = $derived(!isShared && !!singleSelected && singleSelected.originalName !== undefined);
+  let canDeleteSelection = $derived(canDelete && selectedCount > 0);
+
+  async function handleBulkDelete() {
+    if (!canDeleteSelection) return;
+    showConfirm(
+      "Delete",
+      `Delete ${selectedCount} item${selectedCount > 1 ? "s" : ""}?`,
+      async () => {
+        for (const item of selectedItems) {
+          if (item.originalName === undefined) {
+            await fetch(`/api/drive/${driveId}/folders/${item.id}`, { method: "DELETE" });
+          } else {
+            await fetch(`/api/drive/${driveId}/files/${item.id}`, { method: "DELETE" });
+          }
+        }
+        clearSelection();
+        invalidate("app:drive");
+      },
+    );
+  }
+
+  function handleSelectionRename() {
+    if (!singleSelected) return;
+    const item = singleSelected;
+    const type = item.originalName === undefined ? "folder" : "file";
+    openRenameDialog(item.id, item.name || item.originalName, type);
+    clearSelection();
+  }
+
+  function handleSelectionShare() {
+    if (!singleSelected || singleSelected.originalName === undefined) return;
+    openShareDialog(singleSelected.id, singleSelected.name || singleSelected.originalName, "file");
+    clearSelection();
+  }
+
+  function handleSelectionMove() {
+    if (!singleSelected || singleSelected.originalName === undefined) return;
+    openMoveDialog(singleSelected.id, singleSelected.name || singleSelected.originalName);
+    clearSelection();
   }
 
   // Folders/files for the current mode
@@ -612,6 +683,17 @@
       onnewclick={() => { showNewItem = true; newItemType = "folder"; newItemName = ""; }}
       showUploadButton={showUploadButton}
       onuploadclick={() => document.querySelector<HTMLInputElement>("#drive-file-input")?.click()}
+      {hasSelection}
+      selectedCount={selectedCount}
+      canRenameSelection={canRenameSelection}
+      canShareSelection={canShareSelection}
+      canMoveSelection={canMoveSelection}
+      canDeleteSelection={canDeleteSelection}
+      onRename={handleSelectionRename}
+      onShare={handleSelectionShare}
+      onMove={handleSelectionMove}
+      onDelete={handleBulkDelete}
+      onClearSelection={clearSelection}
     />
 
     <form method="POST" enctype="multipart/form-data" style="display: none;" onsubmit={handleUpload}>
@@ -723,13 +805,10 @@
             folders={displayFolders}
             files={displayFiles}
             folderSizes={displayFolderSizes}
+            {selectedIds}
             onnavigate={navigateTo}
             onopenfilepreview={openFilePreview}
-            onshare={!isShared ? openShareDialog : undefined}
-            ondeletefolder={canDelete ? handleDeleteFolder : undefined}
-            ondelete={canDelete ? handleDeletePreview : undefined}
-            onmovestart={!isShared ? openMoveDialog : undefined}
-            onrename={canRename ? openRenameDialog : undefined}
+            ontoggleselection={toggleSelection}
           />
         {:else}
           <ListView
@@ -737,13 +816,10 @@
             folders={displayFolders}
             files={displayFiles}
             folderSizes={displayFolderSizes}
+            {selectedIds}
             onnavigate={navigateTo}
             onopenfilepreview={openFilePreview}
-            onshare={!isShared ? openShareDialog : undefined}
-            ondeletefolder={canDelete ? handleDeleteFolder : undefined}
-            ondelete={canDelete ? handleDeletePreview : undefined}
-            onmovestart={!isShared ? openMoveDialog : undefined}
-            onrename={canRename ? openRenameDialog : undefined}
+            ontoggleselection={toggleSelection}
           />
         {/if}
       {/if}

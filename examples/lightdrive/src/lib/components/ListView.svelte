@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Button, Flex, Text } from "flewui";
-  import { File, Folder, Share2, Trash2, MoveRight, Download, Pen } from "@lucide/svelte";
+  import { Flex, Text } from "flewui";
+  import { File, Folder } from "@lucide/svelte";
   import { formatSize, formatFullDate, getPreviewUrl } from "./helpers";
 
   type Item = Record<string, any>;
@@ -10,27 +10,63 @@
     folders: Item[];
     files: Item[];
     folderSizes?: Record<string, number>;
+    selectedIds: Set<string>;
     onnavigate?: (id: string | null) => void;
     onopenfilepreview?: (id: string) => void;
-    onshare?: (id: string, name: string, type: "file" | "folder") => void;
-    ondeletefolder?: (id: string) => void;
-    ondelete?: (id: string) => void;
-    onmovestart?: (id: string, name: string) => void;
-    onrename?: (id: string, name: string, type: "file" | "folder") => void;
-    onfiledownload?: (file: Item) => string;
+    ontoggleselection?: (id: string) => void;
     emptyMessage?: string;
   };
 
   let {
     driveId, folders, files, folderSizes = {},
-    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart, onrename,
-    onfiledownload, emptyMessage = "No files yet.",
+    selectedIds,
+    onnavigate, onopenfilepreview, ontoggleselection,
+    emptyMessage = "No files yet.",
   }: Props = $props();
 
-  function downloadUrl(f: Item) {
-    if (onfiledownload) return onfiledownload(f);
-    if (driveId) return `/api/drive/${driveId}/files/${f.id}/download`;
-    return `/api/files/${f.id}/download`;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressFired = false;
+
+  function touchStart(id: string) {
+    longPressFired = false;
+    longPressTimer = setTimeout(() => {
+      ontoggleselection?.(id);
+      longPressTimer = null;
+      longPressFired = true;
+    }, 500);
+  }
+
+  function touchEnd() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  function touchMove() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  function handleClick(e: MouseEvent, id: string, isFolder: boolean) {
+    if (longPressFired) {
+      longPressFired = false;
+      return;
+    }
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      ontoggleselection?.(id);
+    } else if (selectedIds.size > 0) {
+      ontoggleselection?.(id);
+    } else {
+      if (isFolder) onnavigate?.(id);
+      else onopenfilepreview?.(id);
+    }
   }
 </script>
 
@@ -41,10 +77,20 @@
       <span class="col-size">Size</span>
       <span class="col-date">Created</span>
       <span class="col-owner">Owner</span>
-      <span class="col-actions">Actions</span>
     </div>
     {#each folders as f}
-      <div class="list-row" onclick={() => onnavigate?.(f.id)} role="button" tabindex={0} onkeydown={(e) => { if (e.key === "Enter") onnavigate?.(f.id); }}>
+      <div
+        class="list-row"
+        class:selected={selectedIds.has(f.id)}
+        onclick={(e) => handleClick(e, f.id, true)}
+        oncontextmenu={(e) => e.preventDefault()}
+        ontouchstart={() => touchStart(f.id)}
+        ontouchend={touchEnd}
+        ontouchmove={touchMove}
+        role="button"
+        tabindex={0}
+        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, true); }}
+      >
         <span class="col-name">
           <Folder size={16} />
           <Text size="sm">{f.name}</Text>
@@ -52,27 +98,21 @@
         <span class="col-size"><Text size="xs" color="tertiary">{formatSize(folderSizes[f.id] ?? 0)}</Text></span>
         <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.createdAt)}</Text></span>
         <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
-        <span class="col-actions" onclick={(e: MouseEvent) => e.stopPropagation()}>
-          {#if onrename}
-            <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.name, "folder")} aria-label="Rename">
-              <Pen size={14} />
-            </Button>
-          {/if}
-          {#if onshare}
-            <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.name, "folder")} aria-label="Share">
-              <Share2 size={14} />
-            </Button>
-          {/if}
-          {#if ondeletefolder}
-            <Button variant="ghost" size="xs" icon onclick={() => ondeletefolder(f.id)} aria-label="Delete">
-              <Trash2 size={14} />
-            </Button>
-          {/if}
-        </span>
       </div>
     {/each}
     {#each files as f}
-      <div class="list-row" onclick={() => onopenfilepreview?.(f.id)} role="button" tabindex={0} onkeydown={(e) => { if (e.key === "Enter") onopenfilepreview?.(f.id); }}>
+      <div
+        class="list-row"
+        class:selected={selectedIds.has(f.id)}
+        onclick={(e) => handleClick(e, f.id, false)}
+        oncontextmenu={(e) => e.preventDefault()}
+        ontouchstart={() => touchStart(f.id)}
+        ontouchend={touchEnd}
+        ontouchmove={touchMove}
+        role="button"
+        tabindex={0}
+        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, false); }}
+      >
         <span class="col-name">
           {#if f.hasPreview}
             <img src={getPreviewUrl(f.id, driveId)} alt="" class="list-thumb" />
@@ -86,33 +126,6 @@
         <span class="col-size"><Text size="xs" color="tertiary">{formatSize(f.size)}</Text></span>
         <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.uploadedAt)}</Text></span>
         <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
-        <span class="col-actions" onclick={(e: MouseEvent) => e.stopPropagation()}>
-          {#if onrename}
-            <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.originalName, "file")} aria-label="Rename">
-              <Pen size={14} />
-            </Button>
-          {/if}
-          {#if onshare}
-            <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.originalName, "file")} aria-label="Share">
-              <Share2 size={14} />
-            </Button>
-          {/if}
-          {#if onmovestart}
-            <Button variant="ghost" size="xs" icon onclick={() => onmovestart(f.id, f.originalName)} aria-label="Move">
-              <MoveRight size={14} />
-            </Button>
-          {/if}
-          <a href={downloadUrl(f)} download={f.originalName}>
-            <Button variant="ghost" size="xs" icon aria-label="Download">
-              <Download size={14} />
-            </Button>
-          </a>
-          {#if ondelete}
-            <Button variant="ghost" size="xs" icon onclick={() => ondelete(f.id)} aria-label="Delete">
-              <Trash2 size={14} />
-            </Button>
-          {/if}
-        </span>
       </div>
     {/each}
   </div>
@@ -130,7 +143,7 @@
 
   .list-header {
     display: grid;
-    grid-template-columns: 1fr 80px 120px 80px 140px;
+    grid-template-columns: 1fr 80px 120px 80px;
     gap: var(--flew-spacing-2);
     padding: 8px 12px;
     border-bottom: 1px solid var(--flew-color-border);
@@ -141,12 +154,12 @@
 
   .list-row {
     display: grid;
-    grid-template-columns: 1fr 80px 120px 80px 140px;
+    grid-template-columns: 1fr 80px 120px 80px;
     gap: var(--flew-spacing-2);
     padding: 8px 12px;
     align-items: center;
     border-bottom: 1px solid var(--flew-color-border);
-    cursor: default;
+    cursor: pointer;
     transition: background var(--flew-transition-fast);
   }
 
@@ -154,8 +167,12 @@
     background: var(--flew-color-bg-hover);
   }
 
-  .list-row[role="button"] {
-    cursor: pointer;
+  .list-row.selected {
+    background: var(--flew-color-primary-bg);
+  }
+
+  .list-row.selected:hover {
+    background: var(--flew-color-primary-hover);
   }
 
   .col-name {
@@ -164,11 +181,6 @@
     gap: var(--flew-spacing-2);
     min-width: 0;
     overflow: hidden;
-  }
-
-  .col-actions {
-    display: flex;
-    gap: 2px;
   }
 
   .list-thumb {
@@ -186,9 +198,26 @@
     }
     .col-size,
     .col-date,
-    .col-owner,
-    .col-actions {
+    .col-owner {
       display: none;
+    }
+
+    .list-row {
+      padding: 12px 16px;
+    }
+
+    .col-name :global(.flew-text--sm) {
+      font-size: 16px !important;
+    }
+
+    .list-thumb {
+      width: 32px;
+      height: 32px;
+    }
+
+    .col-name :global(svg) {
+      width: 20px;
+      height: 20px;
     }
   }
 </style>

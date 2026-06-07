@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button, Flex, Text } from "flewui";
-  import { File, Folder, Share2, Trash2, MoveRight, Download, Pen } from "@lucide/svelte";
+  import { File, Folder } from "@lucide/svelte";
   import { formatSize, getPreviewUrl, isImageType } from "./helpers";
 
   type Item = Record<string, any>;
@@ -10,62 +10,103 @@
     folders: Item[];
     files: Item[];
     folderSizes?: Record<string, number>;
+    selectedIds: Set<string>;
     onnavigate?: (id: string | null) => void;
     onopenfilepreview?: (id: string) => void;
-    onshare?: (id: string, name: string, type: "file" | "folder") => void;
-    ondeletefolder?: (id: string) => void;
-    ondelete?: (id: string) => void;
-    onmovestart?: (id: string, name: string) => void;
-    onrename?: (id: string, name: string, type: "file" | "folder") => void;
-    onfiledownload?: (file: Item) => string;
+    ontoggleselection?: (id: string) => void;
     emptyMessage?: string;
   };
 
   let {
     driveId, folders, files, folderSizes = {},
-    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart, onrename,
-    onfiledownload, emptyMessage = "No files yet.",
+    selectedIds,
+    onnavigate, onopenfilepreview, ontoggleselection,
+    emptyMessage = "No files yet.",
   }: Props = $props();
 
-  function downloadUrl(f: Item) {
-    if (onfiledownload) return onfiledownload(f);
-    if (driveId) return `/api/drive/${driveId}/files/${f.id}/download`;
-    return `/api/files/${f.id}/download`;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressFired = false;
+
+  function touchStart(id: string) {
+    longPressFired = false;
+    longPressTimer = setTimeout(() => {
+      ontoggleselection?.(id);
+      longPressTimer = null;
+      longPressFired = true;
+    }, 500);
+  }
+
+  function touchEnd() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  function touchMove() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  function handleClick(e: MouseEvent, id: string, isFolder: boolean) {
+    if (longPressFired) {
+      longPressFired = false;
+      return;
+    }
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      ontoggleselection?.(id);
+    } else if (selectedIds.size > 0) {
+      ontoggleselection?.(id);
+    } else {
+      if (isFolder) onnavigate?.(id);
+      else onopenfilepreview?.(id);
+    }
   }
 </script>
 
 {#if folders.length > 0 || files.length > 0}
   <div class="grid-view">
     {#each folders as f}
-      <div class="grid-item" onclick={() => onnavigate?.(f.id)} role="button" tabindex={0} onkeydown={(e) => { if (e.key === "Enter") onnavigate?.(f.id); }}>
+      <div
+        class="grid-item"
+        class:selected={selectedIds.has(f.id)}
+        onclick={(e) => handleClick(e, f.id, true)}
+        oncontextmenu={(e) => e.preventDefault()}
+        ontouchstart={() => touchStart(f.id)}
+        ontouchend={touchEnd}
+        ontouchmove={touchMove}
+        role="button"
+        tabindex={0}
+        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, true); }}
+      >
         <div class="grid-preview grid-folder-preview">
           <Folder size={48} />
         </div>
         <div class="grid-info">
           <Text size="sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{f.name}</Text>
           <Text size="xs" color="tertiary">{formatSize(folderSizes[f.id] ?? 0)}</Text>
-          <Flex gap="var(--flew-spacing-1)" style="flex-wrap: wrap;">
-            {#if onrename}
-              <Button variant="ghost" size="xs" icon onclick={(e: MouseEvent) => { e.stopPropagation(); onrename(f.id, f.name, "folder"); }} aria-label="Rename">
-                <Pen size={12} />
-              </Button>
-            {/if}
-            {#if onshare}
-              <Button variant="ghost" size="xs" icon onclick={(e: MouseEvent) => { e.stopPropagation(); onshare(f.id, f.name, "folder"); }} aria-label="Share">
-                <Share2 size={12} />
-              </Button>
-            {/if}
-            {#if ondeletefolder}
-              <Button variant="ghost" size="xs" icon onclick={(e: MouseEvent) => { e.stopPropagation(); ondeletefolder(f.id); }} aria-label="Delete">
-                <Trash2 size={12} />
-              </Button>
-            {/if}
-          </Flex>
         </div>
       </div>
     {/each}
     {#each files as f}
-      <div class="grid-item" onclick={() => onopenfilepreview?.(f.id)} role="button" tabindex={0} onkeydown={(e) => { if (e.key === "Enter") onopenfilepreview?.(f.id); }}>
+      <div
+        class="grid-item"
+        class:selected={selectedIds.has(f.id)}
+        onclick={(e) => handleClick(e, f.id, false)}
+        oncontextmenu={(e) => e.preventDefault()}
+        ontouchstart={() => touchStart(f.id)}
+        ontouchend={touchEnd}
+        ontouchmove={touchMove}
+        role="button"
+        tabindex={0}
+        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, false); }}
+      >
         <div class="grid-preview">
           {#if f.hasPreview}
             <img src={getPreviewUrl(f.id, driveId)} alt={f.originalName} class="grid-thumb" loading="lazy" />
@@ -78,33 +119,6 @@
         <div class="grid-info">
           <Text size="sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{f.originalName}</Text>
           <Text size="xs" color="tertiary">{formatSize(f.size)}</Text>
-          <Flex gap="var(--flew-spacing-1)" style="flex-wrap: wrap;" onclick={(e: MouseEvent) => e.stopPropagation()}>
-            {#if onrename}
-              <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.originalName, "file")} aria-label="Rename">
-                <Pen size={12} />
-              </Button>
-            {/if}
-            {#if onshare}
-              <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.originalName, "file")} aria-label="Share">
-                <Share2 size={12} />
-              </Button>
-            {/if}
-            {#if onmovestart}
-              <Button variant="ghost" size="xs" icon onclick={() => onmovestart(f.id, f.originalName)} aria-label="Move">
-                <MoveRight size={12} />
-              </Button>
-            {/if}
-            <a href={downloadUrl(f)} download={f.originalName}>
-              <Button variant="ghost" size="xs" icon aria-label="Download">
-                <Download size={12} />
-              </Button>
-            </a>
-            {#if ondelete}
-              <Button variant="ghost" size="xs" icon onclick={() => ondelete(f.id)} aria-label="Delete">
-                <Trash2 size={12} />
-              </Button>
-            {/if}
-          </Flex>
         </div>
       </div>
     {/each}
@@ -137,6 +151,11 @@
     box-shadow: var(--flew-shadow-sm);
   }
 
+  .grid-item.selected {
+    border-color: var(--flew-color-primary);
+    box-shadow: 0 0 0 1px var(--flew-color-primary);
+  }
+
   .grid-preview {
     height: 120px;
     display: flex;
@@ -159,5 +178,24 @@
 
   .grid-info {
     padding: 8px 10px;
+  }
+
+  @media (max-width: 768px) {
+    .grid-view {
+      gap: var(--flew-spacing-3);
+      padding: 12px;
+    }
+
+    .grid-preview {
+      height: 160px;
+    }
+
+    .grid-item {
+      font-size: 14px;
+    }
+
+    .grid-info :global(.flew-text--sm) {
+      font-size: 14px !important;
+    }
   }
 </style>

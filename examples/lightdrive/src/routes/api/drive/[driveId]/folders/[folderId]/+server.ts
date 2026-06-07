@@ -13,9 +13,6 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
   const folder = await getFolder(params.folderId);
   if (!folder || folder.userId !== ctx.userId) error(404, "Folder not found");
 
-  const folder = await getFolder(params.folderId);
-  if (!folder || folder.userId !== ctx.userId) error(404, "Folder not found");
-
   if (ctx.type === "share") {
     const perms = (ctx.share?.permissions || "").split(",").map(p => p.trim());
     if (!perms.includes("structure")) error(403, "Structure permission not granted");
@@ -45,7 +42,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
   }
 
   const folder = await getFolder(params.folderId);
-  if (!folder || folder.userId !== ctx.userId) {
+  if (!folder) return json({ error: "Folder not found" }, { status: 404 });
+  if (ctx.type !== "share" && folder.userId !== ctx.userId) {
     return json({ error: "Folder not found" }, { status: 404 });
   }
 
