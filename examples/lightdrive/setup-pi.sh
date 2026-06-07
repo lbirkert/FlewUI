@@ -260,6 +260,12 @@ info "=== Systemd Service ==="
 SERVICE_NAME="lightdrive"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 
+# Stop any running instance before reconfiguring
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+  info "Stopping running $SERVICE_NAME service..."
+  sudo systemctl stop "$SERVICE_NAME"
+fi
+
 if [[ -f "$SERVICE_FILE" ]]; then
   warn "Service $SERVICE_NAME already exists"
   if confirm "Recreate service file?"; then
@@ -280,6 +286,11 @@ if [[ ! -f "$SERVICE_FILE" ]]; then
     NODE_BIN="$(command -v node)"
   fi
 
+  # Read PORT from .env for an explicit Environment= directive
+  # (EnvironmentFile is fragile with quoted values from other variables)
+  LD_PORT="$(grep "^PORT=" "$LIGHTDRIVE_DIR/.env" 2>/dev/null | tail -1 | sed 's/^PORT=//' | tr -d '"')"
+  LD_PORT="${LD_PORT:-3000}"
+
   sudo tee "$SERVICE_FILE" > /dev/null <<UNIT
 [Unit]
 Description=LightDrive — Self-hosted file sharing
@@ -295,7 +306,7 @@ Restart=on-failure
 RestartSec=5
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
-EnvironmentFile=$LIGHTDRIVE_DIR/.env
+Environment=PORT=$LD_PORT
 
 # Security hardening
 NoNewPrivileges=true
@@ -310,8 +321,13 @@ UNIT
 
   sudo systemctl daemon-reload
   sudo systemctl enable "$SERVICE_NAME"
-  sudo systemctl start "$SERVICE_NAME"
-  ok "Service $SERVICE_NAME created and started"
+  sudo systemctl restart "$SERVICE_NAME"
+  sleep 1
+  if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+    ok "Service $SERVICE_NAME created and running"
+  else
+    warn "Service failed to start — check: sudo journalctl -u $SERVICE_NAME -n 30"
+  fi
 fi
 
 # ── Firewall Hint ────────────────────────────
