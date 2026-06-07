@@ -1,5 +1,5 @@
 import { json } from "@sveltejs/kit";
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, appendFile, rename, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { addFile, getFiles, isImage, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
@@ -38,7 +38,72 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
   const formData = await request.formData();
   const uploaded = formData.getAll("files") as File[];
   const folderId = formData.get("folderId") as string | null;
+  const chunkIndex = formData.get("chunkIndex") as string | null;
+  const totalChunks = formData.get("totalChunks") as string | null;
 
+  const resolvedFolderId = ctx.type === "share" && ctx.share?.folderId ? (folderId || ctx.share.folderId) : folderId;
+
+  // Chunked upload
+  if (chunkIndex !== null && totalChunks !== null) {
+    const idx = parseInt(chunkIndex);
+    const total = parseInt(totalChunks);
+    const file = uploaded[0];
+
+    if (ctx.type === "share" && ctx.share?.folderId) {
+      const targetFolder = folderId || ctx.share.folderId;
+      if (resolvedFolderId && !(await isFolderInSharedFolder(resolvedFolderId, ctx.share.folderId))) {
+        return json({ error: "Folder not in shared drive" }, { status: 403 });
+      }
+    }
+
+    if (idx === 0) {
+      const originalName = formData.get("originalName") as string;
+      const ext = (originalName || "file").split(".").pop() ?? "";
+      const newStoredName = `${randomBytes(16).toString("hex")}.${ext}`;
+      const tempPath = join(UPLOAD_DIR, `${newStoredName}.part`);
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await writeFile(tempPath, buffer);
+      return json({ chunk: idx, totalChunks: total, storedName: newStoredName });
+    }
+
+    const storedName = formData.get("storedName") as string;
+    if (!storedName) return json({ error: "Missing storedName for chunk" }, { status: 400 });
+
+    const tempPath = join(UPLOAD_DIR, `${storedName}.part`);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await appendFile(tempPath, buffer);
+
+    if (idx === total - 1) {
+      const finalPath = join(UPLOAD_DIR, storedName);
+      await rename(tempPath, finalPath);
+
+      const originalName = formData.get("originalName") as string || storedName;
+      const fileType = formData.get("fileType") as string || "application/octet-stream";
+      const { size } = await stat(finalPath);
+
+      let hasPreview = false;
+      const img = isImage(fileType);
+      if (img) {
+        try {
+          const sharp = (await import("sharp")).default;
+          await sharp(finalPath)
+            .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+            .webp({ quality: 60 })
+            .toFile(join(UPLOAD_DIR, "previews", `${storedName}.webp`));
+          hasPreview = true;
+        } catch { /* preview failed */ }
+      } else if (isDocumentType(fileType, originalName)) {
+        hasPreview = await generateDocumentPreview(storedName, originalName, fileType);
+      }
+
+      const record = await addFile(ctx.userId, storedName, originalName, size, fileType, resolvedFolderId, hasPreview);
+      return json({ uploaded: 1, files: [{ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview }] });
+    }
+
+    return json({ chunk: idx, totalChunks: total, storedName });
+  }
+
+  // Non-chunked upload
   if (ctx.type === "share" && ctx.share?.folderId) {
     const targetFolder = folderId || ctx.share.folderId;
     if (!(await isFolderInSharedFolder(targetFolder, ctx.share.folderId))) {
@@ -47,7 +112,6 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
   }
 
   const files: { id: string; originalName: string; size: number; type: string; hasPreview: boolean }[] = [];
-  const resolvedFolderId = ctx.type === "share" && ctx.share?.folderId ? (folderId || ctx.share.folderId) : folderId;
 
   for (const file of uploaded) {
     if (file.size > 100 * 1024 * 1024) continue;

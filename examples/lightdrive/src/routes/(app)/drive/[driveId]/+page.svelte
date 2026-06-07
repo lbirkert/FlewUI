@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto, invalidate } from "$app/navigation";
-  import { Button, Card, Flex, Input, Text, Modal, Select, Tag, Divider, Spinner, Heading } from "flewui";
+  import { Button, Card, Flex, Input, Text, Modal, Select, Tag, Divider, Heading } from "flewui";
   import {
-    Upload, File, Folder, Trash2, Lock,
+    Upload, File, Folder, Trash2,
     X, Share2, Clock, MoveRight, Save
   } from "@lucide/svelte";
   import { formatSize, formatDate, formatFullDate, getPreviewUrl, getFileIconClass } from "$lib/components/helpers";
@@ -30,9 +29,51 @@
   let creatingItem = $state(false);
 
   // Upload progress
-  let uploading = $state(false);
-  let uploadProgress = $state(0);
-  let uploadTotal = $state(0);
+  const CHUNK_SIZE = 1024 * 1024;
+
+  type UploadFileState = {
+    name: string;
+    totalBytes: number;
+    uploadedBytes: number;
+    speed: number;
+    eta: number;
+    done: boolean;
+  };
+
+  let uploadFiles = $state<UploadFileState[]>([]);
+  let uploading = $derived(uploadFiles.length > 0 && uploadFiles.some(f => !f.done));
+  let uploadProgress = $derived(uploadFiles.filter(f => f.done).length);
+  let uploadTotal = $derived(uploadFiles.length);
+  let overallBytes = $derived(uploadFiles.reduce((a, f) => a + f.totalBytes, 0));
+  let totalUploadedBytes = $derived(uploadFiles.reduce((a, f) => a + f.uploadedBytes, 0));
+  let uploadStartTime = $state(0);
+
+  let now = $state(Date.now());
+  $effect(() => {
+    if (uploading) {
+      const id = setInterval(() => now = Date.now(), 250);
+      return () => clearInterval(id);
+    }
+  });
+
+  let totalSpeed = $derived(
+    totalUploadedBytes > 0 && uploadStartTime > 0
+      ? totalUploadedBytes / ((now - uploadStartTime) / 1000)
+      : 0
+  );
+  let totalEta = $derived(totalSpeed > 0 ? (overallBytes - totalUploadedBytes) / totalSpeed : 0);
+
+  function formatSpeed(bytesPerSec: number): string {
+    if (bytesPerSec > 1024 * 1024) return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`;
+    if (bytesPerSec > 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    return `${bytesPerSec.toFixed(0)} B/s`;
+  }
+
+  function formatEta(sec: number): string {
+    if (!sec || !isFinite(sec)) return "—";
+    if (sec > 60) return `${Math.ceil(sec / 60)}m ${Math.ceil(sec % 60)}s`;
+    return `${Math.ceil(sec)}s`;
+  }
 
   // Confirm dialog
   let confirmOpen = $state(false);
@@ -156,48 +197,99 @@
 
   function navigateTo(folderId: string | null) {
     const base = `/drive/${driveId}`;
-    if (isShared) {
-      loadShareData(folderId);
-    } else {
-      const url = folderId ? `${base}?folder=${folderId}` : base;
-      goto(url);
-    }
+    const url = folderId ? `${base}?folder=${folderId}` : base;
+    goto(url);
+  }
+
+  function xhrPost(url: string, formData: FormData, onProgress: (pct: number) => void): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+          else reject({ error: data.error || "Upload failed", status: xhr.status });
+        } catch {
+          reject({ error: "Invalid response", status: xhr.status });
+        }
+      };
+      xhr.onerror = () => reject({ error: "Network error" });
+      xhr.send(formData);
+    });
   }
 
   // Personal drive handlers
+  async function uploadFileChunked(file: File, folderId: string | null): Promise<boolean> {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let storedName = "";
+    let startTime = Date.now();
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunkSize = end - start;
+      const chunk = file.slice(start, end);
+
+      const fd = new FormData();
+      fd.set("files", chunk);
+      fd.set("chunkIndex", String(i));
+      fd.set("totalChunks", String(totalChunks));
+      if (i === 0) {
+        fd.set("originalName", file.name);
+        fd.set("fileType", file.type);
+      } else {
+        fd.set("storedName", storedName);
+      }
+      if (folderId) fd.set("folderId", folderId);
+
+      const data = await xhrPost(`/api/drive/${driveId}/files`, fd, (pct) => {
+        const loaded = start + chunkSize * pct;
+        const fi = uploadFiles.find(f => f.name === file.name);
+        if (fi) {
+          fi.uploadedBytes = loaded;
+          const elapsed = (Date.now() - startTime) / 1000 || 1;
+          fi.speed = fi.uploadedBytes / elapsed;
+          fi.eta = (fi.totalBytes - fi.uploadedBytes) / fi.speed;
+        }
+      });
+      if (i === 0 && data.storedName) storedName = data.storedName;
+    }
+
+    const fi = uploadFiles.find(f => f.name === file.name);
+    if (fi) fi.done = true;
+    return true;
+  }
+
   async function handleUpload(e: SubmitEvent) {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement;
     const input = form.querySelector<HTMLInputElement>('input[type="file"]');
     if (!input?.files?.length) return;
 
-    uploading = true;
-    uploadProgress = 0;
-    const files_list = Array.from(input.files);
-    uploadTotal = files_list.length;
-
     const folderId = currentFolderId();
-    let completed = 0;
+    const files_list = Array.from(input.files);
 
-    for (const file of files_list) {
-      const fd = new FormData();
-      fd.set("files", file);
-      if (folderId) fd.set("folderId", folderId);
-      const res = await fetch(`/api/drive/${driveId}/files`, { method: "POST", body: fd });
-      if (!res.ok) {
-        const r = await res.json();
-        showConfirm("Upload Failed", r.error || "Upload failed", () => {}, "primary");
-        break;
-      }
-      completed++;
-      uploadProgress = completed;
+    uploadFiles = files_list.map(f => ({
+      name: f.name,
+      totalBytes: f.size,
+      uploadedBytes: 0,
+      speed: 0,
+      eta: 0,
+      done: false,
+    }));
+    uploadStartTime = Date.now();
+
+    for (let i = 0; i < files_list.length; i++) {
+      const ok = await uploadFileChunked(files_list[i], folderId);
+      if (!ok) break;
     }
 
     form.reset();
-    uploading = false;
-    if (isShared) {
-      await loadShareData(currentFolderId());
-    } else {
+    if (uploadFiles.every(f => f.done)) {
       invalidate("app:drive");
     }
   }
@@ -206,11 +298,7 @@
     const res = await fetch(`/api/drive/${driveId}/files/${fileId}`, { method: "DELETE" });
     if (res.ok) {
       if (filePreviewId === fileId) closeFilePreview();
-      if (isShared) {
-        await loadShareData(currentFolderId());
-      } else {
-        invalidate("app:drive");
-      }
+      invalidate("app:drive");
     }
   }
 
@@ -246,11 +334,7 @@
       if (res.ok) {
         showNewItem = false;
         newItemName = "";
-        if (isShared) {
-          await loadShareData(currentFolderId());
-        } else {
-          invalidate("app:drive");
-        }
+        invalidate("app:drive");
       } else {
         const r = await res.json();
         showConfirm("Error", r.error || "Failed to create folder", () => {}, "primary");
@@ -265,11 +349,7 @@
       if (res.ok) {
         showNewItem = false;
         newItemName = "";
-        if (isShared) {
-          await loadShareData(currentFolderId());
-        } else {
-          invalidate("app:drive");
-        }
+        invalidate("app:drive");
       } else {
         const r = await res.json();
         showConfirm("Error", r.error || "Failed to create document", () => {}, "primary");
@@ -309,66 +389,16 @@
   }
 
   // Shared drive state
-  let shareInfo = $state<any>(null);
-  let sharedFolders = $state<any[]>([]);
-  let sharedFiles = $state<any[]>([]);
-  let shareBreadcrumbs = $state<{ id: string | null; name: string }[]>([]);
-  let shareError = $state("");
-  let shareLoading = $state(true);
+  let shareInfo = $derived(isShared ? data.shareInfo : null);
+  let sharedFolders = $derived(isShared ? data.sharedFolders ?? [] : []);
+  let sharedFiles = $derived(isShared ? data.sharedFiles ?? [] : []);
+  let shareBreadcrumbs = $derived(isShared ? data.shareBreadcrumbs ?? [] : []);
   let showDeleteConfirm = $state(false);
   let deleteTargetId = $state("");
 
   function hasPermission(perm: string) {
-    if (!shareInfo?.permissions) return false;
-    return shareInfo.permissions.split(",").map((p: string) => p.trim()).includes(perm);
-  }
-
-  async function loadShareData(subfolder?: string | null) {
-    if (!isShared) return;
-    shareLoading = true;
-    shareError = "";
-    try {
-      const folderParam = subfolder !== undefined ? subfolder : ($page.url.searchParams.get("folder") || null);
-
-      if (subfolder !== undefined) {
-        const base = `/drive/${driveId}`;
-        goto(subfolder ? `${base}?folder=${subfolder}` : base, { replaceState: true, noScroll: true });
-      }
-
-      const infoUrl = folderParam
-        ? `/api/drive/${driveId}/info?folder=${folderParam}`
-        : `/api/drive/${driveId}/info`;
-      const infoRes = await fetch(infoUrl);
-      if (!infoRes.ok) {
-        if (infoRes.status === 410) shareError = "This share link has expired.";
-        else if (infoRes.status === 404) shareError = "Share link not found.";
-        else shareError = "Failed to load shared content.";
-        return;
-      }
-      shareInfo = await infoRes.json();
-
-      if (shareInfo.type === "folder") {
-        shareBreadcrumbs = shareInfo.breadcrumbs || [{ id: null, name: shareInfo.name || "Shared Folder" }];
-
-        const [filesRes, foldersRes] = await Promise.all([
-          fetch(`/api/drive/${driveId}/files${folderParam ? `?folderId=${folderParam}` : ""}`),
-          fetch(`/api/drive/${driveId}/folders${folderParam ? `?parentId=${folderParam}` : ""}`),
-        ]);
-
-        if (filesRes.ok) {
-          const d = await filesRes.json();
-          sharedFiles = d.files || [];
-        }
-        if (foldersRes.ok) {
-          const d = await foldersRes.json();
-          sharedFolders = d.folders || [];
-        }
-      }
-    } catch {
-      shareError = "Failed to load shared content.";
-    } finally {
-      shareLoading = false;
-    }
+    if (!data.shareInfo?.permissions) return false;
+    return data.shareInfo.permissions.split(",").map((p: string) => p.trim()).includes(perm);
   }
 
   // File share preview
@@ -469,11 +499,7 @@
     if (res.ok) {
       editMode = false;
       loadPreviewContent();
-      if (isShared) {
-        await loadShareData(currentFolderId());
-      } else {
-        invalidate("app:drive");
-      }
+      invalidate("app:drive");
     }
   }
 
@@ -495,24 +521,6 @@
     }
   }
 
-  // Init share data
-  onMount(async () => {
-    if (isShared) {
-      const folderParam = $page.url.searchParams.get("folder") || null;
-      await loadShareData(folderParam);
-    }
-  });
-
-  // Shared drive: listen for folder param changes
-  $effect(() => {
-    if (isShared) {
-      const folderParam = $page.url.searchParams.get("folder") || null;
-      if (folderParam !== currentFolderId()) {
-        loadShareData(folderParam);
-      }
-    }
-  });
-
   // Folders/files for the current mode
   let displayFolders = $derived(isShared ? sharedFolders : data.folders ?? []);
   let displayFiles = $derived(isShared ? sharedFiles : data.files ?? []);
@@ -525,18 +533,7 @@
 </script>
 
 <Flex direction="column" style="height: 100%;">
-  {#if isShared && shareLoading}
-    <Flex direction="column" align="center" justify="center" style="flex: 1;" gap="var(--flew-spacing-3)">
-      <Spinner />
-      <Text color="secondary">Loading shared content...</Text>
-    </Flex>
-  {:else if isShared && shareError}
-    <Flex direction="column" align="center" justify="center" style="flex: 1; text-align: center;" gap="var(--flew-spacing-3)">
-      <Lock size={48} />
-      <Heading depth={2}>{shareError}</Heading>
-      <Text color="secondary" size="sm">The link may be invalid or expired.</Text>
-    </Flex>
-  {:else if isShared && shareInfo?.type === "file"}
+  {#if isShared && shareInfo?.type === "file"}
     <div class="content-area">
       <FilePreview
         {driveId}
@@ -614,12 +611,46 @@
     >
       {#if uploading}
         <div class="upload-banner">
-          <Flex align="center" gap="var(--flew-spacing-2)">
-            <Upload size={16} />
-            <Text size="sm">Uploading {uploadProgress}/{uploadTotal}...</Text>
-            <div class="progress-bar" style="flex: 1; max-width: 200px;">
-              <div class="progress-fill" style="width: {(uploadProgress / uploadTotal) * 100}%;"></div>
-            </div>
+          <Flex direction="vertical" gap="var(--flew-spacing-1)" style="width: 100%;">
+            <Flex align="center" justify="between">
+              <Flex align="center" gap="var(--flew-spacing-2)">
+                <Upload size={16} />
+                <Text size="sm" weight="medium">Uploading {uploadProgress}/{uploadTotal}</Text>
+              </Flex>
+              <Flex align="center" gap="var(--flew-spacing-2)">
+                <Text size="xs" color="tertiary" style="width:80px;text-align:right;">
+                  {totalEta > 0 ? `${formatEta(totalEta)} left` : ""}
+                </Text>
+                <Text size="xs" color="tertiary" style="width:72px;text-align:right;">
+                  {totalSpeed > 0 ? formatSpeed(totalSpeed) : ""}
+                </Text>
+                <div style="width:80px;">
+                  <div class="progress-bar progress-bar--sm">
+                    <div class="progress-fill" style="width: {overallBytes ? (totalUploadedBytes / overallBytes * 100) : 0}%;"></div>
+                  </div>
+                </div>
+              </Flex>
+            </Flex>
+            {#each uploadFiles as f}
+              {#if !f.done}
+                <Flex align="center" justify="between" style="padding-left: 24px;">
+                  <Text size="xs" color="secondary" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%;">{f.name}</Text>
+                  <Flex align="center" gap="var(--flew-spacing-2)">
+                    <Text size="xs" color="tertiary" style="width:80px;text-align:right;">
+                      {f.eta > 0 ? `${formatEta(f.eta)} left` : ""}
+                    </Text>
+                    <Text size="xs" color="tertiary" style="width:72px;text-align:right;">
+                      {f.speed > 0 ? formatSpeed(f.speed) : ""}
+                    </Text>
+                    <div style="width:80px;">
+                      <div class="progress-bar progress-bar--sm">
+                        <div class="progress-fill" style="width: {f.totalBytes ? (f.uploadedBytes / f.totalBytes * 100) : 0}%;"></div>
+                      </div>
+                    </div>
+                  </Flex>
+                </Flex>
+              {/if}
+            {/each}
           </Flex>
         </div>
       {/if}
@@ -871,6 +902,10 @@
     background: var(--flew-color-bg-hover);
     border-radius: var(--flew-radius-full);
     overflow: hidden;
+  }
+
+  .progress-bar--sm {
+    height: 4px;
   }
 
   .progress-fill {

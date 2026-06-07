@@ -1,30 +1,18 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import { ModeWatcher } from "mode-watcher";
   import { Button, Flex, Text, Avatar } from "flewui";
   import "flewui/styles";
-  import { Folder, BarChart3, LogIn, LogOut, User, Menu, Link, HardDrive } from "@lucide/svelte";
+  import { Folder, BarChart3, LogIn, LogOut, User, Menu, Link, HardDrive, Settings } from "@lucide/svelte";
 
-  let {
-    children,
-    user: serverUser,
-  }: {
-    children: import("svelte").Snippet;
-    user: { id: string; name: string; email: string } | null;
-  } = $props();
+  let { data, children }: { data: { user: { id: string; name: string; email: string } | null }; children: import("svelte").Snippet } = $props();
+  let user = $derived(data.user);
 
-  let user = $state<{ id: string; name: string; email: string } | null>(
-    serverUser,
-  );
   let userMenuOpen = $state(false);
   let mobileMenuOpen = $state(false);
 
   import { onMount } from "svelte";
-  onMount(async () => {
-    const res = await fetch("/api/auth/me");
-    if (res.ok) {
-      const data = await res.json();
-      user = data.user;
-    }
+  onMount(() => {
     const onResize = () => {
       if (window.innerWidth > 768) mobileMenuOpen = false;
     };
@@ -47,6 +35,7 @@
   ];
 </script>
 
+<ModeWatcher />
 <div class="app-shell">
   <header class="app-header">
     <Flex gap="var(--flew-spacing-3)" align="center">
@@ -90,6 +79,13 @@
                   onclick={() => (userMenuOpen = false)}
                 >
                   <Text size="sm">Account</Text>
+                </a>
+                <a
+                  href="/account/preferences"
+                  class="dropdown-item"
+                  onclick={() => (userMenuOpen = false)}
+                >
+                  <Text size="sm">Preferences</Text>
                 </a>
                 <a
                   href="/account/shares"
@@ -165,6 +161,15 @@
             >
               <User size={20} />
               <Text size="lg">Account</Text>
+            </a>
+            <a
+              href="/account/preferences"
+              class="mobile-nav-link"
+              class:active={$page.url.pathname.startsWith("/account/preferences")}
+              onclick={() => (mobileMenuOpen = false)}
+            >
+              <Settings size={20} />
+              <Text size="lg">Preferences</Text>
             </a>
             <a
               href="/account/shares"

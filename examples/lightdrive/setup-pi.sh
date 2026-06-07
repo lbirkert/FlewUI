@@ -198,6 +198,13 @@ else
   ok "PORT already set to $PORT"
 fi
 
+echo ""
+info "=== Body Size Limit ==="
+if ! grep -q "^BODY_SIZE_LIMIT" .env 2>/dev/null; then
+  echo 'BODY_SIZE_LIMIT=52428800' >> .env
+  ok "BODY_SIZE_LIMIT set to 50 MB"
+fi
+
 # ── Install npm Dependencies ─────────────────
 
 echo ""
@@ -303,6 +310,7 @@ Restart=on-failure
 RestartSec=5
 Environment=NODE_ENV=production
 Environment=HOST=0.0.0.0
+Environment=BODY_SIZE_LIMIT=52428800
 
 [Install]
 WantedBy=multi-user.target
