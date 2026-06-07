@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button, Flex, Text } from "flewui";
-  import { File, Folder, Share2, Trash2, MoveRight, Download } from "@lucide/svelte";
+  import { File, Folder, Share2, Trash2, MoveRight, Download, Pen } from "@lucide/svelte";
   import { formatSize, formatFullDate, getPreviewUrl } from "./helpers";
 
   type Item = Record<string, any>;
@@ -16,13 +16,14 @@
     ondeletefolder?: (id: string) => void;
     ondelete?: (id: string) => void;
     onmovestart?: (id: string, name: string) => void;
+    onrename?: (id: string, name: string, type: "file" | "folder") => void;
     onfiledownload?: (file: Item) => string;
     emptyMessage?: string;
   };
 
   let {
     driveId, folders, files, folderSizes = {},
-    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart,
+    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart, onrename,
     onfiledownload, emptyMessage = "No files yet.",
   }: Props = $props();
 
@@ -52,6 +53,11 @@
         <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.createdAt)}</Text></span>
         <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
         <span class="col-actions" onclick={(e: MouseEvent) => e.stopPropagation()}>
+          {#if onrename}
+            <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.name, "folder")} aria-label="Rename">
+              <Pen size={14} />
+            </Button>
+          {/if}
           {#if onshare}
             <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.name, "folder")} aria-label="Share">
               <Share2 size={14} />
@@ -81,6 +87,11 @@
         <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.uploadedAt)}</Text></span>
         <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
         <span class="col-actions" onclick={(e: MouseEvent) => e.stopPropagation()}>
+          {#if onrename}
+            <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.originalName, "file")} aria-label="Rename">
+              <Pen size={14} />
+            </Button>
+          {/if}
           {#if onshare}
             <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.originalName, "file")} aria-label="Share">
               <Share2 size={14} />

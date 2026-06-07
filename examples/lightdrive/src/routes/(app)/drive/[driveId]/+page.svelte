@@ -103,10 +103,10 @@
   let loadingShares = $state(false);
 
   let permissionOptions = [
-    { value: "read", label: "View only" },
-    { value: "read,upload", label: "View & Upload" },
-    { value: "read,upload,delete", label: "View, Upload & Delete" },
-    { value: "read,upload,delete,edit", label: "Full access" },
+    { value: "view", label: "View" },
+    { value: "view,insert", label: "View & Insert" },
+    { value: "view,insert,structure", label: "View, Insert & Structure" },
+    { value: "view,insert,edit,structure", label: "Full access" },
   ];
 
   async function loadShares() {
@@ -238,12 +238,9 @@
       fd.set("files", chunk);
       fd.set("chunkIndex", String(i));
       fd.set("totalChunks", String(totalChunks));
-      if (i === 0) {
-        fd.set("originalName", file.name);
-        fd.set("fileType", file.type);
-      } else {
-        fd.set("storedName", storedName);
-      }
+      fd.set("originalName", file.name);
+      fd.set("fileType", file.type);
+      if (i > 0) fd.set("storedName", storedName);
       if (folderId) fd.set("folderId", folderId);
 
       const data = await xhrPost(`/api/drive/${driveId}/files`, fd, (pct) => {
@@ -355,6 +352,47 @@
         showConfirm("Error", r.error || "Failed to create document", () => {}, "primary");
       }
     }
+  }
+
+  // Rename dialog
+  let renameDialogOpen = $state(false);
+  let renameTargetId = $state("");
+  let renameTargetName = $state("");
+  let renameTargetType = $state<"file" | "folder">("file");
+  let renameValue = $state("");
+  let renaming = $state(false);
+  let renameError = $state("");
+
+  function openRenameDialog(id: string, name: string, type: "file" | "folder") {
+    renameTargetId = id;
+    renameTargetName = name;
+    renameTargetType = type;
+    renameValue = name;
+    renameError = "";
+    renaming = false;
+    renameDialogOpen = true;
+  }
+
+  async function doRename() {
+    if (!renameValue.trim()) return;
+    renaming = true;
+    renameError = "";
+    const endpoint = renameTargetType === "folder"
+      ? `/api/drive/${driveId}/folders/${renameTargetId}`
+      : `/api/drive/${driveId}/files/${renameTargetId}`;
+    const res = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: renameValue.trim() }),
+    });
+    if (res.ok) {
+      renameDialogOpen = false;
+      invalidate("app:drive");
+    } else {
+      const r = await res.json();
+      renameError = r.error || "Rename failed";
+    }
+    renaming = false;
   }
 
   // Move dialog (personal drive only)
@@ -526,9 +564,10 @@
   let displayFiles = $derived(isShared ? sharedFiles : data.files ?? []);
   let displayBreadcrumbs = $derived(isShared ? shareBreadcrumbs : data.breadcrumbs ?? []);
   let displayFolderSizes = $derived(!isShared ? data.folderSizes : undefined);
-  let canUpload = $derived(!isShared || hasPermission("upload"));
-  let canDelete = $derived(!isShared || hasPermission("delete"));
+  let canUpload = $derived(!isShared || hasPermission("insert"));
+  let canDelete = $derived(!isShared || hasPermission("structure"));
   let canEdit = $derived(!isShared || (isShared && shareInfo?.type === "file" && hasPermission("edit")));
+  let canRename = $derived(!isShared || hasPermission("structure"));
   let showUploadButton = $derived(canUpload);
 </script>
 
@@ -687,9 +726,10 @@
             onnavigate={navigateTo}
             onopenfilepreview={openFilePreview}
             onshare={!isShared ? openShareDialog : undefined}
-            ondeletefolder={!isShared ? handleDeleteFolder : undefined}
+            ondeletefolder={canDelete ? handleDeleteFolder : undefined}
             ondelete={canDelete ? handleDeletePreview : undefined}
             onmovestart={!isShared ? openMoveDialog : undefined}
+            onrename={canRename ? openRenameDialog : undefined}
           />
         {:else}
           <ListView
@@ -700,9 +740,10 @@
             onnavigate={navigateTo}
             onopenfilepreview={openFilePreview}
             onshare={!isShared ? openShareDialog : undefined}
-            ondeletefolder={!isShared ? handleDeleteFolder : undefined}
+            ondeletefolder={canDelete ? handleDeleteFolder : undefined}
             ondelete={canDelete ? handleDeletePreview : undefined}
             onmovestart={!isShared ? openMoveDialog : undefined}
+            onrename={canRename ? openRenameDialog : undefined}
           />
         {/if}
       {/if}
@@ -764,7 +805,7 @@
               </Flex>
               <Flex align="center" gap="var(--flew-spacing-2)" style="flex-wrap: wrap;">
                 {#each share.permissions.split(",") as perm}
-                  <Tag size="sm" variant={perm === "read" ? "neutral" : "primary"}>{perm.trim()}</Tag>
+                  <Tag size="sm" variant={perm === "view" ? "neutral" : "primary"}>{perm.trim()}</Tag>
                 {/each}
                 {#if share.expiresAt}
                   <Flex align="center" gap="2px">
@@ -860,6 +901,26 @@
     {/snippet}
   </Modal>
 {/if}
+
+<!-- Rename Dialog -->
+<Modal bind:open={renameDialogOpen} title="Rename &quot;{renameTargetName}&quot;" onClose={() => renameDialogOpen = false} width="400px">
+  <form id="rename-form" onsubmit={(e) => { e.preventDefault(); doRename(); }}>
+    <Flex direction="vertical" gap="var(--flew-spacing-3)">
+      <Input label="Name" bind:value={renameValue} required />
+      {#if renameError}
+        <Text size="sm" color="error">{renameError}</Text>
+      {/if}
+    </Flex>
+  </form>
+  {#snippet footer()}
+    <Flex gap="var(--flew-spacing-2)" justify="end">
+      <Button variant="ghost" onclick={() => renameDialogOpen = false}>Cancel</Button>
+      <Button type="submit" form="rename-form" variant="primary" disabled={renaming || !renameValue.trim()}>
+        {renaming ? "Renaming..." : "Rename"}
+      </Button>
+    </Flex>
+  {/snippet}
+</Modal>
 
 <!-- Delete Confirm (shared drive only) -->
 {#if isShared}

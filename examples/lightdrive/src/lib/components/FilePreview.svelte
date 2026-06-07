@@ -126,9 +126,11 @@
         <div class="preview-audio">
           <Music size={48} />
           <Text size="sm" color="secondary" style="text-align: center;">{previewFile.originalName}</Text>
-          <audio controls autoplay class="audio-player">
-            <source src="/api/drive/{driveId}/files/{previewFile.id}/download" type={previewFile.type} />
-          </audio>
+          {#key filePreviewId}
+            <audio controls autoplay class="audio-player">
+              <source src="/api/drive/{driveId}/files/{previewFile.id}/download" type={previewFile.type} />
+            </audio>
+          {/key}
         </div>
       {:else}
         <Flex align="center" justify="center" style="flex: 1;" direction="vertical" gap="var(--flew-spacing-3)">

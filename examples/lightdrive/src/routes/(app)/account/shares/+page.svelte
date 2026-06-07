@@ -76,10 +76,10 @@
   }
 
   let permissionOptions = [
-    { value: "read", label: "View only" },
-    { value: "read,upload", label: "View & Upload" },
-    { value: "read,upload,delete", label: "View, Upload & Delete" },
-    { value: "read,upload,delete,edit", label: "Full access" },
+    { value: "view", label: "View" },
+    { value: "view,insert", label: "View & Insert" },
+    { value: "view,insert,structure", label: "View, Insert & Structure" },
+    { value: "view,insert,edit,structure", label: "Full access" },
   ];
 </script>
 
@@ -114,7 +114,7 @@
               <Text size="sm" weight="semibold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 {share.file?.originalName || share.folder?.name || "Unknown"}
                 {#each share.permissions.split(",") as perm}
-                  <Tag size="sm" variant={perm === "read" ? "neutral" : "primary"}>{perm.trim()}</Tag>
+                  <Tag size="sm" variant={perm === "view" ? "neutral" : "primary"}>{perm.trim()}</Tag>
                 {/each}
               </Text>
               <Flex gap="var(--flew-spacing-2)" align="center" style="flex-wrap: wrap;">

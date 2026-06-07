@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button, Flex, Text } from "flewui";
-  import { File, Folder, Share2, Trash2, MoveRight, Download } from "@lucide/svelte";
+  import { File, Folder, Share2, Trash2, MoveRight, Download, Pen } from "@lucide/svelte";
   import { formatSize, getPreviewUrl, isImageType } from "./helpers";
 
   type Item = Record<string, any>;
@@ -16,13 +16,14 @@
     ondeletefolder?: (id: string) => void;
     ondelete?: (id: string) => void;
     onmovestart?: (id: string, name: string) => void;
+    onrename?: (id: string, name: string, type: "file" | "folder") => void;
     onfiledownload?: (file: Item) => string;
     emptyMessage?: string;
   };
 
   let {
     driveId, folders, files, folderSizes = {},
-    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart,
+    onnavigate, onopenfilepreview, onshare, ondeletefolder, ondelete, onmovestart, onrename,
     onfiledownload, emptyMessage = "No files yet.",
   }: Props = $props();
 
@@ -44,6 +45,11 @@
           <Text size="sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{f.name}</Text>
           <Text size="xs" color="tertiary">{formatSize(folderSizes[f.id] ?? 0)}</Text>
           <Flex gap="var(--flew-spacing-1)" style="flex-wrap: wrap;">
+            {#if onrename}
+              <Button variant="ghost" size="xs" icon onclick={(e: MouseEvent) => { e.stopPropagation(); onrename(f.id, f.name, "folder"); }} aria-label="Rename">
+                <Pen size={12} />
+              </Button>
+            {/if}
             {#if onshare}
               <Button variant="ghost" size="xs" icon onclick={(e: MouseEvent) => { e.stopPropagation(); onshare(f.id, f.name, "folder"); }} aria-label="Share">
                 <Share2 size={12} />
@@ -73,6 +79,11 @@
           <Text size="sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{f.originalName}</Text>
           <Text size="xs" color="tertiary">{formatSize(f.size)}</Text>
           <Flex gap="var(--flew-spacing-1)" style="flex-wrap: wrap;" onclick={(e: MouseEvent) => e.stopPropagation()}>
+            {#if onrename}
+              <Button variant="ghost" size="xs" icon onclick={() => onrename(f.id, f.originalName, "file")} aria-label="Rename">
+                <Pen size={12} />
+              </Button>
+            {/if}
             {#if onshare}
               <Button variant="ghost" size="xs" icon onclick={() => onshare(f.id, f.originalName, "file")} aria-label="Share">
                 <Share2 size={12} />

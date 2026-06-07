@@ -2,7 +2,7 @@ import { json } from "@sveltejs/kit";
 import { getFile, getFolder, createShare, getFileShares, getFolderShares, deleteShare, updateShare, getUserShares } from "$lib/server/db";
 import type { RequestHandler } from "./$types";
 
-const VALID_PERMISSIONS = ["read", "upload", "delete", "edit"];
+const VALID_PERMISSIONS = ["view", "insert", "edit", "structure"];
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user) return json({ error: "Not authenticated" }, { status: 401 });
@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: "fileId or folderId is required" }, { status: 400 });
   }
 
-  const perms = permissions || "read";
+  const perms = permissions || "view";
   for (const p of perms.split(",")) {
     if (!VALID_PERMISSIONS.includes(p.trim())) {
       return json({ error: `Invalid permission: ${p}` }, { status: 400 });

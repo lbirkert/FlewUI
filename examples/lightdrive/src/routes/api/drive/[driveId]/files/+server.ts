@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url, locals, params }) => {
 };
 
 export const POST: RequestHandler = async ({ request, locals, params, url }) => {
-  const ctx = await getDriveContext(params.driveId, locals, "upload");
+  const ctx = await getDriveContext(params.driveId, locals, "insert");
   if (!ctx) return json({ error: "Drive not found or upload not permitted" }, { status: 404 });
   if (ctx.type === "share" && !ctx.share?.folderId) {
     return json({ error: "Can only upload to shared folders" }, { status: 400 });
@@ -48,6 +48,8 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     const idx = parseInt(chunkIndex);
     const total = parseInt(totalChunks);
     const file = uploaded[0];
+    const originalName = formData.get("originalName") as string || "file";
+    const fileType = formData.get("fileType") as string || "application/octet-stream";
 
     if (ctx.type === "share" && ctx.share?.folderId) {
       const targetFolder = folderId || ctx.share.folderId;
@@ -56,12 +58,38 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
       }
     }
 
+    const ext = originalName.split(".").pop() ?? "";
+    const newStoredName = `${randomBytes(16).toString("hex")}.${ext}`;
+
+    async function createRecord(stored: string, finalPath: string) {
+      const { size } = await stat(finalPath);
+      const img = isImage(fileType);
+      let hasPreview = false;
+      if (img) {
+        try {
+          const sharp = (await import("sharp")).default;
+          await sharp(finalPath)
+            .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+            .webp({ quality: 60 })
+            .toFile(join(UPLOAD_DIR, "previews", `${stored}.webp`));
+          hasPreview = true;
+        } catch { /* preview failed */ }
+      } else if (isDocumentType(fileType, originalName)) {
+        hasPreview = await generateDocumentPreview(stored, originalName, fileType);
+      }
+      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview);
+      return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
+    }
+
     if (idx === 0) {
-      const originalName = formData.get("originalName") as string;
-      const ext = (originalName || "file").split(".").pop() ?? "";
-      const newStoredName = `${randomBytes(16).toString("hex")}.${ext}`;
-      const tempPath = join(UPLOAD_DIR, `${newStoredName}.part`);
       const buffer = Buffer.from(await file.arrayBuffer());
+      if (total === 1) {
+        const finalPath = join(UPLOAD_DIR, newStoredName);
+        await writeFile(finalPath, buffer);
+        const result = await createRecord(newStoredName, finalPath);
+        return json({ uploaded: 1, files: [result] });
+      }
+      const tempPath = join(UPLOAD_DIR, `${newStoredName}.part`);
       await writeFile(tempPath, buffer);
       return json({ chunk: idx, totalChunks: total, storedName: newStoredName });
     }
@@ -76,28 +104,8 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     if (idx === total - 1) {
       const finalPath = join(UPLOAD_DIR, storedName);
       await rename(tempPath, finalPath);
-
-      const originalName = formData.get("originalName") as string || storedName;
-      const fileType = formData.get("fileType") as string || "application/octet-stream";
-      const { size } = await stat(finalPath);
-
-      let hasPreview = false;
-      const img = isImage(fileType);
-      if (img) {
-        try {
-          const sharp = (await import("sharp")).default;
-          await sharp(finalPath)
-            .resize(800, 800, { fit: "inside", withoutEnlargement: true })
-            .webp({ quality: 60 })
-            .toFile(join(UPLOAD_DIR, "previews", `${storedName}.webp`));
-          hasPreview = true;
-        } catch { /* preview failed */ }
-      } else if (isDocumentType(fileType, originalName)) {
-        hasPreview = await generateDocumentPreview(storedName, originalName, fileType);
-      }
-
-      const record = await addFile(ctx.userId, storedName, originalName, size, fileType, resolvedFolderId, hasPreview);
-      return json({ uploaded: 1, files: [{ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview }] });
+      const result = await createRecord(storedName, finalPath);
+      return json({ uploaded: 1, files: [result] });
     }
 
     return json({ chunk: idx, totalChunks: total, storedName });

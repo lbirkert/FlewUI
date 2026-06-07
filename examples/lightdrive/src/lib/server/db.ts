@@ -195,6 +195,20 @@ export async function moveFile(id: string, folderId: string | null) {
   });
 }
 
+export async function renameFile(id: string, name: string) {
+  await prisma.file.update({
+    where: { id },
+    data: { originalName: name },
+  });
+}
+
+export async function renameFolder(id: string, name: string) {
+  await prisma.folder.update({
+    where: { id },
+    data: { name },
+  });
+}
+
 export async function deleteFileRecord(id: string) {
   await prisma.file.deleteMany({ where: { id } });
 }
@@ -300,10 +314,9 @@ export async function getValidShare(token: string, permission?: string) {
   });
   if (!share) return null;
   if (share.expiresAt && share.expiresAt < new Date()) return null;
-  if (permission) {
-    const perms = share.permissions.split(",").map(p => p.trim());
-    if (!perms.includes(permission)) return null;
-  }
+  const perms = share.permissions.split(",").map(p => p.trim());
+  if (!perms.includes("view") && !perms.includes("read")) return null;
+  if (permission && !perms.includes(permission)) return null;
   return share;
 }
 
