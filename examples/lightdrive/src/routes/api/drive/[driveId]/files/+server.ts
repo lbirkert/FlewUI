@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { addFile, getFiles, isImage, isVideo, isAudio, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
 import { generateDocumentPreview, isDocumentType } from "$lib/server/preview";
-import { transcodeVideo, transcodeAudio, generateVideoThumbnail } from "$lib/server/transcode";
+import { transcodeAudio, generateVideoThumbnail } from "$lib/server/transcode";
+import { worker } from "$lib/server/transcode-worker";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
@@ -68,7 +69,6 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
       const vid = isVideo(fileType, originalName);
       const aud = isAudio(fileType, originalName);
       let hasPreview = false;
-      let transcodedName: string | null = null;
       if (img) {
         try {
           const sharp = (await import("sharp")).default;
@@ -79,21 +79,21 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
           hasPreview = true;
         } catch { /* preview failed */ }
       } else if (vid) {
-        const [thumbOk, transcodeResult] = await Promise.all([
-          generateVideoThumbnail(stored),
-          transcodeVideo(stored),
-        ]);
-        hasPreview = thumbOk;
-        transcodedName = transcodeResult;
+        hasPreview = await generateVideoThumbnail(stored);
+        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null);
+        worker.enqueue(record.id, stored);
+        return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
       } else if (aud) {
-        transcodedName = await transcodeAudio(stored);
+        const transcodedName = await transcodeAudio(stored);
         if (isDocumentType(fileType, originalName)) {
           hasPreview = await generateDocumentPreview(stored, originalName, fileType);
         }
+        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, transcodedName);
+        return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
       } else if (isDocumentType(fileType, originalName)) {
         hasPreview = await generateDocumentPreview(stored, originalName, fileType);
       }
-      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, transcodedName);
+      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null);
       return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
     }
 
@@ -149,7 +149,6 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     const vid = isVideo(file.type, file.name);
     const aud = isAudio(file.type, file.name);
     let hasPreview = false;
-    let transcodedName: string | null = null;
 
     if (img) {
       try {
@@ -161,22 +160,24 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
         hasPreview = true;
       } catch { /* preview failed */ }
     } else if (vid) {
-      const [thumbOk, transcodeResult] = await Promise.all([
-        generateVideoThumbnail(storedName),
-        transcodeVideo(storedName),
-      ]);
-      hasPreview = thumbOk;
-      transcodedName = transcodeResult;
+      hasPreview = await generateVideoThumbnail(storedName);
+      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null);
+      worker.enqueue(record.id, storedName);
+      files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
+      continue;
     } else if (aud) {
-      transcodedName = await transcodeAudio(storedName);
+      const transcodedName = await transcodeAudio(storedName);
       if (isDocumentType(file.type, file.name)) {
         hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
       }
+      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, transcodedName);
+      files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
+      continue;
     } else if (isDocumentType(file.type, file.name)) {
       hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
     }
 
-    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, transcodedName);
+    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null);
     files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
   }
 

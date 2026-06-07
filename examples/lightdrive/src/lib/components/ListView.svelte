@@ -1,7 +1,13 @@
 <script lang="ts">
   import { Flex, Text } from "flewui";
   import { File, Folder } from "@lucide/svelte";
-  import { formatSize, formatFullDate, getPreviewUrl } from "./helpers";
+  import { formatSize, formatFullDate, getPreviewUrl, isVideoType } from "./helpers";
+
+  let failedImages = $state<Set<string>>(new Set());
+  function imgError(fileId: string) {
+    failedImages.add(fileId);
+    failedImages = new Set(failedImages);
+  }
 
   type Item = Record<string, any>;
 
@@ -114,8 +120,8 @@
         onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, false); }}
       >
         <span class="col-name">
-          {#if f.hasPreview}
-            <img src={getPreviewUrl(f.id, driveId)} alt="" class="list-thumb" />
+          {#if f.hasPreview || (isVideoType(f.type, f.originalName) && !failedImages.has(f.id))}
+            <img src={getPreviewUrl(f.id, driveId)} alt="" class="list-thumb" onerror={() => imgError(f.id)} />
           {:else}
             <File size={16} />
           {/if}

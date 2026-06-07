@@ -591,6 +591,17 @@
       ...displayFiles.filter((f: any) => ids.has(f.id)),
     ];
   });
+  
+  // Folders/files for the current mode
+  let displayFolders = $derived(isShared ? sharedFolders : data.folders ?? []);
+  let displayFiles = $derived(isShared ? sharedFiles : data.files ?? []);
+  let displayBreadcrumbs = $derived(isShared ? shareBreadcrumbs : data.breadcrumbs ?? []);
+  let displayFolderSizes = $derived(!isShared ? data.folderSizes : undefined);
+  let canUpload = $derived(!isShared || hasPermission("insert"));
+  let canDelete = $derived(!isShared || hasPermission("structure"));
+  let canEdit = $derived(!isShared || (isShared && shareInfo?.type === "file" && hasPermission("edit")));
+  let canRename = $derived(!isShared || hasPermission("structure"));
+  let showUploadButton = $derived(canUpload);
 
   let singleSelected = $derived(selectedCount === 1 ? selectedItems[0] : null);
   let canRenameSelection = $derived(canRename && !!singleSelected);
@@ -636,16 +647,6 @@
     clearSelection();
   }
 
-  // Folders/files for the current mode
-  let displayFolders = $derived(isShared ? sharedFolders : data.folders ?? []);
-  let displayFiles = $derived(isShared ? sharedFiles : data.files ?? []);
-  let displayBreadcrumbs = $derived(isShared ? shareBreadcrumbs : data.breadcrumbs ?? []);
-  let displayFolderSizes = $derived(!isShared ? data.folderSizes : undefined);
-  let canUpload = $derived(!isShared || hasPermission("insert"));
-  let canDelete = $derived(!isShared || hasPermission("structure"));
-  let canEdit = $derived(!isShared || (isShared && shareInfo?.type === "file" && hasPermission("edit")));
-  let canRename = $derived(!isShared || hasPermission("structure"));
-  let showUploadButton = $derived(canUpload);
 </script>
 
 <Flex direction="column" style="height: 100%;">

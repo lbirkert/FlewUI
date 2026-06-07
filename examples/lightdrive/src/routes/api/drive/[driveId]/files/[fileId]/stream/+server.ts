@@ -2,8 +2,9 @@ import { error } from "@sveltejs/kit";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { getFile, getDriveContext, isFileInSharedFolder, prisma } from "$lib/server/db";
-import { transcodeVideo, getTranscodedPath } from "$lib/server/transcode";
+import prisma, { getFile, getDriveContext, isFileInSharedFolder } from "$lib/server/db";
+import { getTranscodedPath } from "$lib/server/transcode";
+import { worker } from "$lib/server/transcode-worker";
 import type { RequestHandler } from "./$types";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
@@ -28,15 +29,9 @@ export const GET: RequestHandler = async ({ params, request, url, locals }) => {
     error(404, "File not found");
   }
 
-  const quality = url.searchParams.get("quality") || undefined;
-
   async function tryServe(): Promise<Response | null> {
-
-    if(!record.transcodedName)
-      return null;
-
-    const filePath = join(UPLOAD_DIR, getTranscodedPath(record.storedName, quality));
-    console.log(filePath);
+    if (!record.transcodedName) return null;
+    const filePath = join(UPLOAD_DIR, getTranscodedPath(record.storedName));
 
     let fileStat;
     try {
@@ -89,18 +84,19 @@ export const GET: RequestHandler = async ({ params, request, url, locals }) => {
   let response = await tryServe();
   if (response) return response;
 
-  // File not found on disk — try transcoding on demand
   if (!record.type.startsWith("video/")) error(404, "File not found on disk");
 
-  console.log(`[stream] transcoding ${record.storedName} on demand`);
-  const newTranscoded = await transcodeVideo(record.storedName);
-  if (!newTranscoded) error(404, "File not found on disk");
+  if (!worker.isPending(record.id)) {
+    console.log(`[stream] enqueuing ${record.storedName} on demand`);
+    worker.enqueue(record.id, record.storedName);
+  }
 
-  await prisma.file.update({
-    where: { id: record.id },
-    data: { transcodedName: newTranscoded },
-  });
-  record.transcodedName = newTranscoded;
+  console.log(`[stream] waiting for transcode of ${record.storedName}`);
+  const ok = await worker.waitFor(record.id);
+
+  if (!ok) error(404, "File not found on disk");
+
+  record.transcodedName = `${record.storedName}.webm`;
 
   response = await tryServe();
   if (!response) error(404, "File not found on disk");
