@@ -215,6 +215,13 @@ info "Installing LightDrive dependencies..."
 npm install
 ok "Dependencies installed"
 
+# ── SvelteKit sync — creates .svelte-kit/tsconfig.json ──
+
+echo ""
+info "=== SvelteKit Sync ==="
+npx svelte-kit sync
+ok "SvelteKit synced"
+
 # ── Prisma: generate client & push schema ────
 
 echo ""
@@ -223,7 +230,7 @@ info "=== Database Setup ==="
 # Generate Prisma client (output to src/lib/server/prisma-client)
 npx prisma generate
 # Push schema to database
-if [[ "$CURRENT_DB" == file:* ]] || grep -q "^DATABASE_URL=\"\?file:" .env; then
+if grep -q "^DATABASE_URL=\"\?file:" .env; then
   # SQLite — ensure parent directory exists
   DB_PATH=$(grep ^DATABASE_URL .env | sed 's/^DATABASE_URL=//' | tr -d '"' | sed 's/^file://')
   mkdir -p "$(dirname "$DB_PATH")" 2>/dev/null || true
