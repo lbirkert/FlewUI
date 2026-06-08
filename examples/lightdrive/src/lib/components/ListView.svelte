@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Flex, Text } from "flewui";
-  import { File, Folder } from "@lucide/svelte";
+  import { File, Folder, ArrowUp, ArrowDown } from "@lucide/svelte";
   import { formatSize, formatFullDate, getPreviewUrl, isVideoType } from "./helpers";
 
   let failedImages = $state<Set<string>>(new Set());
@@ -17,6 +17,9 @@
     files: Item[];
     folderSizes?: Record<string, number>;
     selectedIds: Set<string>;
+    sortMode?: string;
+    updateSort?: (col: "name" | "date" | "size") => void;
+    sortIndicator?: (col: "name" | "date" | "size") => "asc" | "desc" | null;
     onnavigate?: (id: string | null) => void;
     onopenfilepreview?: (id: string) => void;
     ontoggleselection?: (id: string) => void;
@@ -26,6 +29,7 @@
   let {
     driveId, folders, files, folderSizes = {},
     selectedIds,
+    sortMode = "date-desc", updateSort, sortIndicator,
     onnavigate, onopenfilepreview, ontoggleselection,
     emptyMessage = "No files yet.",
   }: Props = $props();
@@ -79,9 +83,24 @@
 {#if folders.length > 0 || files.length > 0}
   <div class="list-table">
     <div class="list-header">
-      <span class="col-name">Name</span>
-      <span class="col-size">Size</span>
-      <span class="col-date">Created</span>
+      <button class="col-name col-header" onclick={() => updateSort?.("name")}>
+        Name
+        {#if sortIndicator?.("name") === "asc"}<ArrowUp size={12} />
+        {:else if sortIndicator?.("name") === "desc"}<ArrowDown size={12} />
+        {/if}
+      </button>
+      <button class="col-size col-header" onclick={() => updateSort?.("size")}>
+        Size
+        {#if sortIndicator?.("size") === "asc"}<ArrowUp size={12} />
+        {:else if sortIndicator?.("size") === "desc"}<ArrowDown size={12} />
+        {/if}
+      </button>
+      <button class="col-date col-header" onclick={() => updateSort?.("date")}>
+        Created
+        {#if sortIndicator?.("date") === "asc"}<ArrowUp size={12} />
+        {:else if sortIndicator?.("date") === "desc"}<ArrowDown size={12} />
+        {/if}
+      </button>
       <span class="col-owner">Owner</span>
     </div>
     {#each folders as f}
@@ -156,6 +175,10 @@
     font-size: var(--flew-font-size-xs);
     color: var(--flew-color-text-tertiary);
     font-weight: 600;
+    position: sticky;
+    top: 0px;
+    z-index: 1;
+    background: var(--flew-color-bg);
   }
 
   .list-row {
@@ -174,11 +197,28 @@
   }
 
   .list-row.selected {
-    background: var(--flew-color-primary-bg);
+    background: var(--flew-color-bg-active);
   }
 
   .list-row.selected:hover {
-    background: var(--flew-color-primary-hover);
+    background: var(--flew-color-bg-active);
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    padding: 0;
+    transition: color var(--flew-transition-fast);
+  }
+
+  .col-header:hover {
+    color: var(--flew-color-text);
   }
 
   .col-name {
@@ -190,8 +230,8 @@
   }
 
   .list-thumb {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     object-fit: cover;
     border-radius: 4px;
     flex-shrink: 0;
@@ -217,13 +257,13 @@
     }
 
     .list-thumb {
-      width: 32px;
-      height: 32px;
+      width: 40px;
+      height: 40px;
     }
 
     .col-name :global(svg) {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
     }
   }
 </style>

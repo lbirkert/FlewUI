@@ -40,6 +40,7 @@ export type FileMinAggregateOutputType = {
   id: string | null
   storedName: string | null
   originalName: string | null
+  contentHash: string | null
   size: number | null
   type: string | null
   userId: string | null
@@ -54,6 +55,7 @@ export type FileMaxAggregateOutputType = {
   id: string | null
   storedName: string | null
   originalName: string | null
+  contentHash: string | null
   size: number | null
   type: string | null
   userId: string | null
@@ -68,6 +70,7 @@ export type FileCountAggregateOutputType = {
   id: number
   storedName: number
   originalName: number
+  contentHash: number
   size: number
   type: number
   userId: number
@@ -94,6 +97,7 @@ export type FileMinAggregateInputType = {
   id?: true
   storedName?: true
   originalName?: true
+  contentHash?: true
   size?: true
   type?: true
   userId?: true
@@ -108,6 +112,7 @@ export type FileMaxAggregateInputType = {
   id?: true
   storedName?: true
   originalName?: true
+  contentHash?: true
   size?: true
   type?: true
   userId?: true
@@ -122,6 +127,7 @@ export type FileCountAggregateInputType = {
   id?: true
   storedName?: true
   originalName?: true
+  contentHash?: true
   size?: true
   type?: true
   userId?: true
@@ -223,6 +229,7 @@ export type FileGroupByOutputType = {
   id: string
   storedName: string
   originalName: string
+  contentHash: string | null
   size: number
   type: string
   userId: string
@@ -260,6 +267,7 @@ export type FileWhereInput = {
   id?: Prisma.StringFilter<"File"> | string
   storedName?: Prisma.StringFilter<"File"> | string
   originalName?: Prisma.StringFilter<"File"> | string
+  contentHash?: Prisma.StringNullableFilter<"File"> | string | null
   size?: Prisma.IntFilter<"File"> | number
   type?: Prisma.StringFilter<"File"> | string
   userId?: Prisma.StringFilter<"File"> | string
@@ -277,6 +285,7 @@ export type FileOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   storedName?: Prisma.SortOrder
   originalName?: Prisma.SortOrder
+  contentHash?: Prisma.SortOrderInput | Prisma.SortOrder
   size?: Prisma.SortOrder
   type?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -297,6 +306,7 @@ export type FileWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.FileWhereInput | Prisma.FileWhereInput[]
   storedName?: Prisma.StringFilter<"File"> | string
   originalName?: Prisma.StringFilter<"File"> | string
+  contentHash?: Prisma.StringNullableFilter<"File"> | string | null
   size?: Prisma.IntFilter<"File"> | number
   type?: Prisma.StringFilter<"File"> | string
   userId?: Prisma.StringFilter<"File"> | string
@@ -314,6 +324,7 @@ export type FileOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   storedName?: Prisma.SortOrder
   originalName?: Prisma.SortOrder
+  contentHash?: Prisma.SortOrderInput | Prisma.SortOrder
   size?: Prisma.SortOrder
   type?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -336,6 +347,7 @@ export type FileScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"File"> | string
   storedName?: Prisma.StringWithAggregatesFilter<"File"> | string
   originalName?: Prisma.StringWithAggregatesFilter<"File"> | string
+  contentHash?: Prisma.StringNullableWithAggregatesFilter<"File"> | string | null
   size?: Prisma.IntWithAggregatesFilter<"File"> | number
   type?: Prisma.StringWithAggregatesFilter<"File"> | string
   userId?: Prisma.StringWithAggregatesFilter<"File"> | string
@@ -350,6 +362,7 @@ export type FileCreateInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   downloads?: number
@@ -365,6 +378,7 @@ export type FileUncheckedCreateInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   userId: string
@@ -380,6 +394,7 @@ export type FileUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloads?: Prisma.IntFieldUpdateOperationsInput | number
@@ -395,6 +410,7 @@ export type FileUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -410,6 +426,7 @@ export type FileCreateManyInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   userId: string
@@ -424,6 +441,7 @@ export type FileUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloads?: Prisma.IntFieldUpdateOperationsInput | number
@@ -436,6 +454,7 @@ export type FileUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -460,6 +479,7 @@ export type FileCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   storedName?: Prisma.SortOrder
   originalName?: Prisma.SortOrder
+  contentHash?: Prisma.SortOrder
   size?: Prisma.SortOrder
   type?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -479,6 +499,7 @@ export type FileMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   storedName?: Prisma.SortOrder
   originalName?: Prisma.SortOrder
+  contentHash?: Prisma.SortOrder
   size?: Prisma.SortOrder
   type?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -493,6 +514,7 @@ export type FileMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   storedName?: Prisma.SortOrder
   originalName?: Prisma.SortOrder
+  contentHash?: Prisma.SortOrder
   size?: Prisma.SortOrder
   type?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -629,6 +651,7 @@ export type FileCreateWithoutUserInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   downloads?: number
@@ -643,6 +666,7 @@ export type FileUncheckedCreateWithoutUserInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   folderId?: string | null
@@ -685,6 +709,7 @@ export type FileScalarWhereInput = {
   id?: Prisma.StringFilter<"File"> | string
   storedName?: Prisma.StringFilter<"File"> | string
   originalName?: Prisma.StringFilter<"File"> | string
+  contentHash?: Prisma.StringNullableFilter<"File"> | string | null
   size?: Prisma.IntFilter<"File"> | number
   type?: Prisma.StringFilter<"File"> | string
   userId?: Prisma.StringFilter<"File"> | string
@@ -699,6 +724,7 @@ export type FileCreateWithoutFolderInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   downloads?: number
@@ -713,6 +739,7 @@ export type FileUncheckedCreateWithoutFolderInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   userId: string
@@ -752,6 +779,7 @@ export type FileCreateWithoutSharesInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   downloads?: number
@@ -766,6 +794,7 @@ export type FileUncheckedCreateWithoutSharesInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   userId: string
@@ -796,6 +825,7 @@ export type FileUpdateWithoutSharesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloads?: Prisma.IntFieldUpdateOperationsInput | number
@@ -810,6 +840,7 @@ export type FileUncheckedUpdateWithoutSharesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -824,6 +855,7 @@ export type FileCreateManyUserInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   folderId?: string | null
@@ -837,6 +869,7 @@ export type FileUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloads?: Prisma.IntFieldUpdateOperationsInput | number
@@ -851,6 +884,7 @@ export type FileUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -865,6 +899,7 @@ export type FileUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -878,6 +913,7 @@ export type FileCreateManyFolderInput = {
   id?: string
   storedName: string
   originalName: string
+  contentHash?: string | null
   size: number
   type?: string
   userId: string
@@ -891,6 +927,7 @@ export type FileUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloads?: Prisma.IntFieldUpdateOperationsInput | number
@@ -905,6 +942,7 @@ export type FileUncheckedUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -919,6 +957,7 @@ export type FileUncheckedUpdateManyWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   storedName?: Prisma.StringFieldUpdateOperationsInput | string
   originalName?: Prisma.StringFieldUpdateOperationsInput | string
+  contentHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   size?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -963,6 +1002,7 @@ export type FileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   storedName?: boolean
   originalName?: boolean
+  contentHash?: boolean
   size?: boolean
   type?: boolean
   userId?: boolean
@@ -981,6 +1021,7 @@ export type FileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   storedName?: boolean
   originalName?: boolean
+  contentHash?: boolean
   size?: boolean
   type?: boolean
   userId?: boolean
@@ -997,6 +1038,7 @@ export type FileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   storedName?: boolean
   originalName?: boolean
+  contentHash?: boolean
   size?: boolean
   type?: boolean
   userId?: boolean
@@ -1013,6 +1055,7 @@ export type FileSelectScalar = {
   id?: boolean
   storedName?: boolean
   originalName?: boolean
+  contentHash?: boolean
   size?: boolean
   type?: boolean
   userId?: boolean
@@ -1023,7 +1066,7 @@ export type FileSelectScalar = {
   transcodedName?: boolean
 }
 
-export type FileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "storedName" | "originalName" | "size" | "type" | "userId" | "folderId" | "downloads" | "hasPreview" | "uploadedAt" | "transcodedName", ExtArgs["result"]["file"]>
+export type FileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "storedName" | "originalName" | "contentHash" | "size" | "type" | "userId" | "folderId" | "downloads" | "hasPreview" | "uploadedAt" | "transcodedName", ExtArgs["result"]["file"]>
 export type FileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   folder?: boolean | Prisma.File$folderArgs<ExtArgs>
@@ -1050,6 +1093,7 @@ export type $FilePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     storedName: string
     originalName: string
+    contentHash: string | null
     size: number
     type: string
     userId: string
@@ -1487,6 +1531,7 @@ export interface FileFieldRefs {
   readonly id: Prisma.FieldRef<"File", 'String'>
   readonly storedName: Prisma.FieldRef<"File", 'String'>
   readonly originalName: Prisma.FieldRef<"File", 'String'>
+  readonly contentHash: Prisma.FieldRef<"File", 'String'>
   readonly size: Prisma.FieldRef<"File", 'Int'>
   readonly type: Prisma.FieldRef<"File", 'String'>
   readonly userId: Prisma.FieldRef<"File", 'String'>

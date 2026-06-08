@@ -1,8 +1,8 @@
 import { json } from "@sveltejs/kit";
-import { writeFile, appendFile, rename, mkdir, stat } from "node:fs/promises";
+import { writeFile, appendFile, rename, mkdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { randomBytes } from "node:crypto";
-import { addFile, getFiles, isImage, isVideo, isAudio, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
+import { randomBytes, createHash } from "node:crypto";
+import { addFile, findDuplicateFile, getFiles, isImage, isVideo, isAudio, getDriveContext, isFolderInSharedFolder } from "$lib/server/db";
 import { generateDocumentPreview, isDocumentType } from "$lib/server/preview";
 import { transcodeAudio, generateVideoThumbnail } from "$lib/server/transcode";
 import { worker } from "$lib/server/transcode-worker";
@@ -65,9 +65,18 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
 
     async function createRecord(stored: string, finalPath: string) {
       const { size } = await stat(finalPath);
+      const fileData = await readFile(finalPath);
+      const contentHash = createHash("sha256").update(fileData).digest("hex");
+
+      if (!ctx) throw new Error("No drive context");
+      const existing = await findDuplicateFile(ctx.userId, originalName, contentHash, resolvedFolderId);
+      if (existing) {
+        return { id: existing.id, originalName: existing.originalName, size: existing.size, type: existing.type, hasPreview: existing.hasPreview };
+      }
+
       const img = isImage(fileType);
-      const vid = isVideo(fileType, originalName);
-      const aud = isAudio(fileType, originalName);
+      const vid = isVideo(fileType);
+      const aud = isAudio(fileType);
       let hasPreview = false;
       if (img) {
         try {
@@ -80,7 +89,7 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
         } catch { /* preview failed */ }
       } else if (vid) {
         hasPreview = await generateVideoThumbnail(stored);
-        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null);
+        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null, contentHash);
         worker.enqueue(record.id, stored);
         return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
       } else if (aud) {
@@ -88,12 +97,12 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
         if (isDocumentType(fileType, originalName)) {
           hasPreview = await generateDocumentPreview(stored, originalName, fileType);
         }
-        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, transcodedName);
+        const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, transcodedName, contentHash);
         return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
       } else if (isDocumentType(fileType, originalName)) {
         hasPreview = await generateDocumentPreview(stored, originalName, fileType);
       }
-      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null);
+      const record = await addFile(ctx.userId, stored, originalName, size, fileType, resolvedFolderId, hasPreview, null, contentHash);
       return { id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview };
     }
 
@@ -127,6 +136,19 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     return json({ chunk: idx, totalChunks: total, storedName });
   }
 
+  const userId = ctx!.userId;
+
+  function computeHash(buffer: Buffer): string {
+    return createHash("sha256").update(buffer).digest("hex");
+  }
+
+  async function findExisting(stored: string, originalName: string, hash: string, buffer: Buffer) {
+    if (ctx!.type !== "user") return null;
+    const dup = await findDuplicateFile(userId, originalName, hash, resolvedFolderId);
+    if (dup) return dup;
+    return null;
+  }
+
   // Non-chunked upload
   if (ctx.type === "share" && ctx.share?.folderId) {
     const targetFolder = folderId || ctx.share.folderId;
@@ -142,12 +164,20 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
     const ext = file.name.split(".").pop() ?? "";
     const storedName = `${randomBytes(16).toString("hex")}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
+    const contentHash = computeHash(buffer);
+
+    const existing = await findExisting(storedName, file.name, contentHash, buffer);
+    if (existing) {
+      files.push({ id: existing.id, originalName: existing.originalName, size: existing.size, type: existing.type, hasPreview: existing.hasPreview });
+      continue;
+    }
+
     const filePath = join(UPLOAD_DIR, storedName);
     await writeFile(filePath, buffer);
 
     const img = isImage(file.type);
-    const vid = isVideo(file.type, file.name);
-    const aud = isAudio(file.type, file.name);
+    const vid = isVideo(file.type);
+    const aud = isAudio(file.type);
     let hasPreview = false;
 
     if (img) {
@@ -161,7 +191,7 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
       } catch { /* preview failed */ }
     } else if (vid) {
       hasPreview = await generateVideoThumbnail(storedName);
-      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null);
+      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null, contentHash);
       worker.enqueue(record.id, storedName);
       files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
       continue;
@@ -170,14 +200,14 @@ export const POST: RequestHandler = async ({ request, locals, params, url }) => 
       if (isDocumentType(file.type, file.name)) {
         hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
       }
-      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, transcodedName);
+      const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, transcodedName, contentHash);
       files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
       continue;
     } else if (isDocumentType(file.type, file.name)) {
       hasPreview = await generateDocumentPreview(storedName, file.name, file.type);
     }
 
-    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null);
+    const record = await addFile(ctx.userId, storedName, file.name, file.size, file.type, resolvedFolderId, hasPreview, null, contentHash);
     files.push({ id: record.id, originalName: record.originalName, size: record.size, type: record.type, hasPreview });
   }
 

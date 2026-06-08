@@ -138,7 +138,7 @@
 <style>
   .grid-view {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: var(--flew-spacing-3);
     padding: 16px;
   }
@@ -163,7 +163,7 @@
   }
 
   .grid-preview {
-    height: 120px;
+    height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -193,7 +193,7 @@
     }
 
     .grid-preview {
-      height: 160px;
+      height: 180px;
     }
 
     .grid-item {

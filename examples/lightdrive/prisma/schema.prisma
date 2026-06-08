@@ -43,6 +43,7 @@ model File {
   id           String   @id @default(cuid())
   storedName   String
   originalName String
+  contentHash  String?
   size         Int
   type         String   @default("application/octet-stream")
   userId       String

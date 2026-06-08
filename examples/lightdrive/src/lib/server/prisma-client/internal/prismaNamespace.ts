@@ -850,6 +850,7 @@ export const FileScalarFieldEnum = {
   id: 'id',
   storedName: 'storedName',
   originalName: 'originalName',
+  contentHash: 'contentHash',
   size: 'size',
   type: 'type',
   userId: 'userId',

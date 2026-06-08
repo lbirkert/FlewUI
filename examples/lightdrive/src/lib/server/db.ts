@@ -132,9 +132,16 @@ export async function addFile(
   folderId?: string | null,
   hasPreview = false,
   transcodedName?: string | null,
+  contentHash?: string | null,
 ) {
   return prisma.file.create({
-    data: { storedName, originalName, size, type, userId, folderId: folderId ?? null, hasPreview, transcodedName: transcodedName ?? null },
+    data: { storedName, originalName, contentHash, size, type, userId, folderId: folderId ?? null, hasPreview, transcodedName: transcodedName ?? null },
+  });
+}
+
+export async function findDuplicateFile(userId: string, originalName: string, contentHash: string, folderId?: string | null) {
+  return prisma.file.findFirst({
+    where: { userId, originalName, contentHash, folderId: folderId ?? null },
   });
 }
 
@@ -316,6 +323,7 @@ export async function getFileTypeBreakdown(userId: string) {
       : ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"].includes(ext) ? "documents"
       : ["zip", "tar", "gz", "rar", "7z"].includes(ext) ? "archives"
       : ["mp3", "wav", "flac", "ogg", "aac", "m4a", "wma"].includes(ext) ? "audio"
+      : ["mp4", "webm", "mkv", "avi", "mov", "wmv", "flv", "m4v", "mpg", "mpeg", "3gp"].includes(ext) ? "video"
       : "other";
     const g = groups.get(key) ?? { count: 0, size: 0 };
     g.count++;
@@ -387,7 +395,7 @@ export async function isFolderInSharedFolder(folderId: string, shareFolderId: st
   if (folderId === shareFolderId) return true;
   let current: string | null = folderId;
   while (current) {
-    const parent = await prisma.folder.findUnique({ where: { id: current }, select: { parentId: true } });
+    const parent: { parentId: string | null } | null = await prisma.folder.findUnique({ where: { id: current }, select: { parentId: true } });
     if (!parent) break;
     if (parent.parentId === shareFolderId) return true;
     current = parent.parentId;

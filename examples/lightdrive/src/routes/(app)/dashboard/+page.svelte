@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Card, Flex, Heading, Text, Chart } from "flewui";
-  import { Upload, Download, Users, HardDrive, Image, FileText, Archive, Music, TrendingUp } from "@lucide/svelte";
+  import { Upload, Download, Users, HardDrive, Image, FileText, Archive, Music, Video, TrendingUp } from "@lucide/svelte";
 
   let { data } = $props();
 
@@ -16,6 +16,7 @@
     documents: "#22c55e",
     archives: "#f59e0b",
     audio: "#a855f7",
+    video: "#ef4444",
     other: "#6b7280",
   };
 
@@ -24,6 +25,7 @@
     documents: { label: "Documents", icon: FileText },
     archives: { label: "Archives", icon: Archive },
     audio: { label: "Audio", icon: Music },
+    video: { label: "Video", icon: Video },
     other: { label: "Other", icon: HardDrive },
   };
 

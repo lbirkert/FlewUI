@@ -18,7 +18,7 @@
     previewFileIndex: number;
     editMode: boolean;
     editText: string;
-    onclose: () => void;
+    onclose?: () => void;
     ongotoprev: () => void;
     ongotonext: () => void;
     onenableedit?: () => void;
@@ -135,7 +135,7 @@
       {:else if previewCategory === "video"}
         <div class="preview-video">
           {#key filePreviewId}
-            <video controls autoplay class="video-player">
+            <video controls autoplay class="video-player" poster={previewFile.hasPreview ? getPreviewUrl(previewFile.id, driveId) : undefined}>
               <source src="/api/drive/{driveId}/files/{previewFile.id}/stream" type="video/webm" />
             </video>
           {/key}
@@ -199,7 +199,9 @@
               <Trash2 size={18} />
             </Button>
           {/if}
-          <Button variant="ghost" size="sm" icon onclick={onclose} aria-label="Close"><X size={18} /></Button>
+          {#if onclose}
+            <Button variant="ghost" size="sm" icon onclick={onclose} aria-label="Close"><X size={18} /></Button>
+          {/if}
         </Flex>
       </div>
     </div>
@@ -300,7 +302,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 8px;
     overflow: hidden;
     position: relative;
   }
@@ -311,8 +313,8 @@
   }
 
   .video-player {
-    max-width: 100%;
-    max-height: calc(100% - 80px);
+    width: 100%;
+    max-height: 100%;
     border-radius: var(--flew-radius-sm);
   }
 

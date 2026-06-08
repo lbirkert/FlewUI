@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { goto, invalidate } from "$app/navigation";
+  import { goto, invalidate, replaceState, beforeNavigate, afterNavigate } from "$app/navigation";
   import { Button, Card, Flex, Input, Text, Modal, Select, Tag, Divider, Heading } from "flewui";
   import {
     Upload, File, Folder, Trash2,
@@ -18,7 +18,31 @@
   let isShared = $derived(data.isShared);
 
   type ViewMode = "list" | "grid";
-  let viewMode = $state<ViewMode>("list");
+  let viewMode = $state<ViewMode>($page.url.hash === "#grid" ? "grid" : "list");
+
+  $effect(() => {
+    const hash = viewMode === "grid" ? "#grid" : "";
+    const url = $page.url.pathname + $page.url.search + hash;
+    if ($page.url.hash !== hash) {
+      replaceState(url, {});
+    }
+  });
+
+  let savedScroll = $state(0);
+
+  beforeNavigate(({ to }) => {
+    if (to?.url.pathname === $page.url.pathname) {
+      savedScroll = document.querySelector<HTMLElement>(".content-area")?.scrollTop ?? 0;
+    }
+  });
+
+  afterNavigate(() => {
+    if (savedScroll > 0) {
+      const el = document.querySelector<HTMLElement>(".content-area");
+      if (el) el.scrollTop = savedScroll;
+      savedScroll = 0;
+    }
+  });
 
   let dragOver = $state(false);
 
@@ -55,6 +79,33 @@
       return () => clearInterval(id);
     }
   });
+
+  let isOnline = $state(true);
+  let currentXhr: XMLHttpRequest | null = null;
+  let onlineResolve: (() => void) | null = null;
+
+  $effect(() => {
+    function onOnline() {
+      isOnline = true;
+      onlineResolve?.();
+      onlineResolve = null;
+    }
+    function onOffline() {
+      isOnline = false;
+      currentXhr?.abort();
+    }
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  });
+
+  function waitForOnline(): Promise<void> {
+    if (isOnline) return Promise.resolve();
+    return new Promise((resolve) => { onlineResolve = resolve; });
+  }
 
   let totalSpeed = $derived(
     totalUploadedBytes > 0 && uploadStartTime > 0
@@ -104,9 +155,7 @@
 
   let permissionOptions = [
     { value: "view", label: "View" },
-    { value: "view,insert", label: "View & Insert" },
-    { value: "view,insert,structure", label: "View, Insert & Structure" },
-    { value: "view,insert,edit,structure", label: "Full access" },
+    { value: "view,edit", label: "Edit" },
   ];
 
   async function loadShares() {
@@ -178,7 +227,7 @@
   function openShareDialog(id: string, name: string, type: "file" | "folder") {
     showShareDialog = { id, name, type };
     shareDialogOpen = true;
-    sharePermissions = "read";
+    sharePermissions = "view";
     shareExpiry = "";
     shareUrlValue = "";
     createShareError = "";
@@ -205,11 +254,13 @@
   function xhrPost(url: string, formData: FormData, onProgress: (pct: number) => void): Promise<any> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      currentXhr = xhr;
       xhr.open("POST", url);
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(e.loaded / e.total);
       };
       xhr.onload = () => {
+        currentXhr = null;
         try {
           const data = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300) resolve(data);
@@ -218,7 +269,14 @@
           reject({ error: "Invalid response", status: xhr.status });
         }
       };
-      xhr.onerror = () => reject({ error: "Network error" });
+      xhr.onerror = () => {
+        currentXhr = null;
+        reject({ error: "Network error" });
+      };
+      xhr.onabort = () => {
+        currentXhr = null;
+        reject({ error: "Aborted" });
+      };
       xhr.send(formData);
     });
   }
@@ -228,6 +286,7 @@
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     let storedName = "";
     let startTime = Date.now();
+    const maxRetries = 3;
 
     for (let i = 0; i < totalChunks; i++) {
       const start = i * CHUNK_SIZE;
@@ -235,26 +294,44 @@
       const chunkSize = end - start;
       const chunk = file.slice(start, end);
 
-      const fd = new FormData();
-      fd.set("files", chunk);
-      fd.set("chunkIndex", String(i));
-      fd.set("totalChunks", String(totalChunks));
-      fd.set("originalName", file.name);
-      fd.set("fileType", file.type);
-      if (i > 0) fd.set("storedName", storedName);
-      if (folderId) fd.set("folderId", folderId);
+      let lastError: any = null;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        await waitForOnline();
+        try {
+          const fd = new FormData();
+          fd.set("files", chunk);
+          fd.set("chunkIndex", String(i));
+          fd.set("totalChunks", String(totalChunks));
+          fd.set("originalName", file.name);
+          fd.set("fileType", file.type);
+          if (storedName) fd.set("storedName", storedName);
+          if (folderId) fd.set("folderId", folderId);
 
-      const data = await xhrPost(`/api/drive/${driveId}/files`, fd, (pct) => {
-        const loaded = start + chunkSize * pct;
-        const fi = uploadFiles.find(f => f.name === file.name);
-        if (fi) {
-          fi.uploadedBytes = loaded;
-          const elapsed = (Date.now() - startTime) / 1000 || 1;
-          fi.speed = fi.uploadedBytes / elapsed;
-          fi.eta = (fi.totalBytes - fi.uploadedBytes) / fi.speed;
+          const data = await xhrPost(`/api/drive/${driveId}/files`, fd, (pct) => {
+            const loaded = start + chunkSize * pct;
+            const fi = uploadFiles.find(f => f.name === file.name);
+            if (fi) {
+              fi.uploadedBytes = loaded;
+              const elapsed = (Date.now() - startTime) / 1000 || 1;
+              fi.speed = fi.uploadedBytes / elapsed;
+              fi.eta = (fi.totalBytes - fi.uploadedBytes) / fi.speed;
+            }
+          });
+          if (i === 0 && data.storedName) storedName = data.storedName;
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxRetries) {
+            if (!isOnline) {
+              await waitForOnline();
+            } else {
+              await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+            }
+          }
         }
-      });
-      if (i === 0 && data.storedName) storedName = data.storedName;
+      }
+      if (lastError) return false;
     }
 
     const fi = uploadFiles.find(f => f.name === file.name);
@@ -587,16 +664,90 @@
   let selectedItems = $derived.by(() => {
     const ids = selectedIds;
     return [
-      ...displayFolders.filter((f: any) => ids.has(f.id)),
-      ...displayFiles.filter((f: any) => ids.has(f.id)),
+      ...filteredFolders.filter((f: any) => ids.has(f.id)),
+      ...filteredFiles.filter((f: any) => ids.has(f.id)),
     ];
   });
   
-  // Folders/files for the current mode
-  let displayFolders = $derived(isShared ? sharedFolders : data.folders ?? []);
-  let displayFiles = $derived(isShared ? sharedFiles : data.files ?? []);
+  // Raw folders/files
+  let rawFolders = $derived(isShared ? sharedFolders : data.folders ?? []);
+  let rawFiles = $derived(isShared ? sharedFiles : data.files ?? []);
   let displayBreadcrumbs = $derived(isShared ? shareBreadcrumbs : data.breadcrumbs ?? []);
   let displayFolderSizes = $derived(!isShared ? data.folderSizes : undefined);
+
+  // Search, filter, sort
+  let searchOpen = $state(false);
+  let searchQuery = $state("");
+  type SortMode = "name-asc" | "name-desc" | "date-desc" | "date-asc" | "size-desc" | "size-asc";
+  let sortMode = $state<SortMode>("date-desc");
+  let filterType = $state("all");
+
+  function updateSort(col: "name" | "date" | "size") {
+    const map: Record<string, [SortMode, SortMode]> = {
+      name: ["name-asc", "name-desc"],
+      date: ["date-asc", "date-desc"],
+      size: ["size-asc", "size-desc"],
+    };
+    const [asc, desc] = map[col];
+    sortMode = sortMode === desc ? asc : desc;
+  }
+
+  function sortIndicator(col: "name" | "date" | "size"): "asc" | "desc" | null {
+    if (sortMode === `${col}-asc`) return "asc";
+    if (sortMode === `${col}-desc`) return "desc";
+    return null;
+  }
+
+  function getFileCategory(f: any): string {
+    const t = f.type || "";
+    const n = f.originalName || "";
+    const ext = n.split(".").pop()?.toLowerCase() || "";
+    if (["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml", "image/avif"].includes(t)) return "images";
+    if (["mp4", "webm", "mkv", "avi", "mov", "wmv", "flv", "m4v", "mpg", "mpeg", "3gp"].includes(ext) ||
+        ["video/mp4", "video/webm", "video/x-matroska", "video/avi", "video/x-msvideo", "video/quicktime", "video/x-ms-wmv", "video/x-flv", "video/mpeg"].includes(t)) return "videos";
+    if (["mp3", "wav", "flac", "ogg", "aac", "m4a", "wma", "opus", "webm"].includes(ext) ||
+        t.startsWith("audio/")) return "audio";
+    if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "md"].includes(ext)) return "documents";
+    if (["zip", "tar", "gz", "rar", "7z"].includes(ext)) return "archives";
+    return "other";
+  }
+
+  let filteredFolders = $derived.by(() => {
+    let items = rawFolders;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((f: any) => f.name.toLowerCase().includes(q));
+    }
+    const sortFn = sortMode === "name-asc" ? (a: any, b: any) => a.name.localeCompare(b.name)
+      : sortMode === "name-desc" ? (a: any, b: any) => b.name.localeCompare(a.name)
+      : sortMode === "date-asc" ? (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      : sortMode === "date-desc" ? (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      : () => 0;
+    return [...items].sort(sortFn);
+  });
+
+  let filteredFiles = $derived.by(() => {
+    let items = rawFiles;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((f: any) => f.originalName.toLowerCase().includes(q));
+    }
+    if (filterType !== "all") {
+      items = items.filter((f: any) => getFileCategory(f) === filterType);
+    }
+    const sortFn = sortMode === "name-asc" ? (a: any, b: any) => a.originalName.localeCompare(b.originalName)
+      : sortMode === "name-desc" ? (a: any, b: any) => b.originalName.localeCompare(a.originalName)
+      : sortMode === "date-asc" ? (a: any, b: any) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
+      : sortMode === "date-desc" ? (a: any, b: any) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      : sortMode === "size-asc" ? (a: any, b: any) => a.size - b.size
+      : sortMode === "size-desc" ? (a: any, b: any) => b.size - a.size
+      : () => 0;
+    return [...items].sort(sortFn);
+  });
+
+  // Folders/files for the display
+  let displayFolders = $derived(filteredFolders);
+  let displayFiles = $derived(filteredFiles);
   let canUpload = $derived(!isShared || hasPermission("insert"));
   let canDelete = $derived(!isShared || hasPermission("structure"));
   let canEdit = $derived(!isShared || (isShared && shareInfo?.type === "file" && hasPermission("edit")));
@@ -649,7 +800,7 @@
 
 </script>
 
-<Flex direction="column" style="height: 100%;">
+<Flex direction="column" style="height: 100%;" gap="0">
   {#if isShared && shareInfo?.type === "file"}
     <div class="content-area">
       <FilePreview
@@ -664,7 +815,6 @@
         previewFileIndex={0}
         bind:editMode
         bind:editText
-        onclose={() => {}}
         ongotoprev={() => {}}
         ongotonext={() => {}}
         onenableedit={canEdit ? enableEdit : undefined}
@@ -701,6 +851,13 @@
       onMove={handleSelectionMove}
       onDelete={handleBulkDelete}
       onClearSelection={clearSelection}
+      bind:searchOpen
+      bind:searchQuery
+      bind:filterType
+      bind:sortMode
+      onsearchclear={() => searchQuery = ""}
+      onfilterchange={(v) => filterType = v}
+      onsortchange={(v) => sortMode = v as any}
     />
 
     <form method="POST" enctype="multipart/form-data" style="display: none;" onsubmit={handleUpload}>
@@ -708,7 +865,7 @@
         id="drive-file-input"
         type="file"
         multiple
-        accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm"
         onchange={(e) => {
           (e.currentTarget as HTMLInputElement).form?.requestSubmit();
         }}
@@ -737,6 +894,13 @@
         }
       }}
     >
+      {#if !isOnline}
+        <div class="offline-banner" class:offline-banner--uploading={uploading}>
+          <Text size="xs" color="warning">
+            {uploading ? "Connection lost — upload paused, resumes automatically" : "No internet connection"}
+          </Text>
+        </div>
+      {/if}
       {#if uploading}
         <div class="upload-banner">
           <Flex direction="vertical" gap="var(--flew-spacing-1)" style="width: 100%;">
@@ -824,6 +988,9 @@
             files={displayFiles}
             folderSizes={displayFolderSizes}
             {selectedIds}
+            {sortMode}
+            {updateSort}
+            {sortIndicator}
             onnavigate={navigateTo}
             onopenfilepreview={openFilePreview}
             ontoggleselection={toggleSelection}
@@ -963,7 +1130,7 @@
 
 <!-- Move Dialog (personal drive only) -->
 {#if !isShared}
-  <Modal bind:open={moveDialogOpen} title="Move {selectedCount > 1 ? `${selectedCount} items` : `&quot;${moveTargetNames}&quot;`}" onClose={() => moveDialogOpen = false} width="480px">
+  <Modal bind:open={moveDialogOpen} title="Move {selectedCount > 1 ? `${selectedCount} items` : moveTargetNames}" onClose={() => moveDialogOpen = false} width="480px">
     <form method="dialog">
       <Flex direction="vertical" gap="var(--flew-spacing-1)">
         <Text size="sm" weight="medium" style="margin-bottom: 4px;">Choose destination:</Text>
@@ -1036,13 +1203,13 @@
     display: flex;
     align-items: center;
     gap: var(--flew-spacing-2);
-    padding: 8px 16px;
+    padding: 10px 18px;
     background: var(--flew-color-bg-overlay);
     border-bottom: 1px solid var(--flew-color-border);
   }
 
   .progress-bar {
-    height: 6px;
+    height: 8px;
     background: var(--flew-color-bg-hover);
     border-radius: var(--flew-radius-full);
     overflow: hidden;
@@ -1065,7 +1232,7 @@
     gap: var(--flew-spacing-2);
     width: 100%;
     text-align: left;
-    padding: 8px 12px;
+    padding: 10px 14px;
     background: none;
     border: none;
     cursor: pointer;
@@ -1079,9 +1246,19 @@
     background: var(--flew-color-bg-hover);
   }
 
-  @media (max-width: 640px) {
-    .btn-label {
-      display: none;
-    }
+  .offline-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    background: var(--flew-color-warning-bg, #fef3c7);
+    border-bottom: 1px solid var(--flew-color-warning-border, #f59e0b);
+    flex-shrink: 0;
   }
+
+  .offline-banner--uploading {
+    background: var(--flew-color-danger-bg, #fee2e2);
+    border-bottom-color: var(--flew-color-danger-border, #ef4444);
+  }
+
 </style>
