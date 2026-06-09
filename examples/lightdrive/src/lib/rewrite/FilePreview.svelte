@@ -38,14 +38,6 @@
 
 {#if filePreviewId && previewFile}
   <div class="file-preview">
-    <div class="preview-edit-bar">
-      {#if editMode && onsaveedit && oncanceledit}
-        <button class="preview-btn" onclick={onsaveedit}>Save</button>
-        <button class="preview-btn" onclick={oncanceledit}>Cancel</button>
-      {:else if isEditable() && onenableedit}
-        <button class="preview-btn" onclick={onenableedit}>Edit</button>
-      {/if}
-    </div>
     <div class="preview-body">
       {#if previewCategory === "image"}
         <div class="preview-image-wrap">
@@ -136,24 +128,7 @@
       {/if}
     </div>
     <div class="preview-footer">
-      <div class="preview-file-info">
-        <span class="file-name">{previewFile.originalName}</span>
-        <span class="file-meta">{formatSize(previewFile.size)} &middot; {formatFullDate(previewFile.uploadedAt)}</span>
-      </div>
-      <div class="preview-actions">
-        <button class="preview-btn" disabled={previewFileIndex <= 0} onclick={ongotoprev} aria-label="Previous">&larr;</button>
-        <button class="preview-btn" disabled={previewFileIndex < 0 || previewFileIndex >= previewFiles.length - 1} onclick={ongotonext} aria-label="Next">&rarr;</button>
-        <a href="/api/drive/{driveId}/files/{previewFile.id}/download" download={previewFile.originalName} class="preview-btn">Download</a>
-        {#if onshare}
-          <button class="preview-btn" onclick={() => onshare(previewFile.id, previewFile.originalName, "file")} aria-label="Share">Share</button>
-        {/if}
-        {#if ondelete}
-          <button class="preview-btn" onclick={() => ondelete(previewFile.id)} aria-label="Delete">Delete</button>
-        {/if}
-        {#if onclose}
-          <button class="preview-btn" onclick={onclose} aria-label="Close">Close</button>
-        {/if}
-      </div>
+      <span class="file-meta">{formatSize(previewFile.size)} &middot; {formatFullDate(previewFile.uploadedAt)}</span>
     </div>
   </div>
 {/if}

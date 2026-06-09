@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Upload, Download, HardDrive, TrendingUp } from "@lucide/svelte";
+  import Chart from "$lib/rewrite/Chart.svelte";
+
   let { data } = $props();
 
   function formatSize(bytes: number) {
@@ -19,6 +22,78 @@
   };
 
   let totalPct = $derived(data.breakdown.reduce((s: number, t: { size: number }) => s + t.size, 0));
+
+  let typeChartData = $derived({
+    labels: data.breakdown.map((t: { type: string }) => typeLabels[t.type] ?? t.type),
+    datasets: [{
+      data: data.breakdown.map((t: { size: number }) => t.size),
+      backgroundColor: data.breakdown.map((t: { type: string }) => typeColors[t.type] ?? typeColors.other),
+      borderWidth: 0,
+    }],
+  });
+
+  let activityChartData = $derived({
+    labels: data.recentUploads.map((d: { date: string }) => {
+      const parts = d.date.split("-");
+      return `${Number(parts[1])}/${Number(parts[2])}`;
+    }),
+    datasets: [{
+      label: "Uploads",
+      data: data.recentUploads.map((d: { count: number }) => d.count),
+      borderColor: "var(--flew-color-primary)",
+      backgroundColor: "var(--flew-color-primary-bg)",
+      tension: 0.3,
+      fill: true,
+    }],
+  });
+
+  let sizeChartData = $derived({
+    labels: data.sizeDist.map((s: { label: string }) => s.label),
+    datasets: [{
+      label: "Files",
+      data: data.sizeDist.map((s: { count: number }) => s.count),
+      backgroundColor: ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444"],
+      borderRadius: 4,
+    }],
+  });
+
+  let topDownloadsChartData = $derived({
+    labels: data.topDownloads.map((f: { originalName: string }) => {
+      const maxLen = 20;
+      return f.originalName.length > maxLen ? f.originalName.slice(0, maxLen) + "..." : f.originalName;
+    }),
+    datasets: [{
+      label: "Downloads",
+      data: data.topDownloads.map((f: { downloads: number }) => f.downloads),
+      backgroundColor: "var(--flew-color-primary)",
+      borderRadius: 4,
+    }],
+  });
+
+  const doughnutOptions = {
+    plugins: {
+      legend: { display: true, position: "bottom" as const, labels: { boxWidth: 12, padding: 12 } },
+    },
+    cutout: "60%",
+  };
+
+  const noLegendOptions = {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true },
+    },
+  };
+
+  const barLegendOptions = {
+    plugins: {
+      legend: { display: true, position: "bottom" as const, labels: { boxWidth: 12, padding: 12 } },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true },
+    },
+  };
 </script>
 
 <div class="dashboard">
@@ -26,79 +101,82 @@
 
   <div class="stat-grid">
     <div class="stat-card">
-      <h3>Total Files</h3>
-      <p class="stat-value">{data.stats.totalFiles}</p>
+      <div class="stat-header">
+        <Upload size={16} />
+        <span>Uploads</span>
+      </div>
+      <div class="stat-value">{data.stats.totalFiles}</div>
     </div>
     <div class="stat-card">
-      <h3>Downloads</h3>
-      <p class="stat-value">{data.stats.totalDownloads}</p>
+      <div class="stat-header">
+        <Download size={16} />
+        <span>Downloads</span>
+      </div>
+      <div class="stat-value">{data.stats.totalDownloads}</div>
     </div>
     <div class="stat-card">
-      <h3>Active Users</h3>
-      <p class="stat-value">{data.stats.totalFiles > 0 ? 1 : 0}</p>
-    </div>
-    <div class="stat-card">
-      <h3>Storage Used</h3>
-      <p class="stat-value">{formatSize(data.stats.totalSize)}</p>
+      <div class="stat-header">
+        <HardDrive size={16} />
+        <span>Storage Used</span>
+      </div>
+      <div class="stat-value">{formatSize(data.stats.totalSize)}</div>
     </div>
   </div>
 
   <div class="chart-grid">
     <div class="chart-card">
       <h2>Storage by Type</h2>
-      <ul class="breakdown-list">
-        {#each data.breakdown as t}
-          {@const pct = totalPct > 0 ? (t.size / totalPct * 100) : 0}
-          <li>
-            <span class="breakdown-label">{typeLabels[t.type] ?? t.type}</span>
-            <span class="breakdown-count">{t.count} file{t.count !== 1 ? "s" : ""}</span>
-            <span class="breakdown-pct">{pct.toFixed(0)}%</span>
-            <div class="bar"><div class="bar-fill" style="width:{pct}%"></div></div>
-          </li>
-        {:else}
-          <li>No data yet</li>
-        {/each}
-      </ul>
+      {#if data.breakdown.length > 0}
+        <Chart type="doughnut" data={typeChartData} options={doughnutOptions} height="280px" />
+        <div class="breakdown-list">
+          {#each data.breakdown as t}
+            {@const pct = totalPct > 0 ? (t.size / totalPct * 100) : 0}
+            <div class="breakdown-row">
+              <div class="breakdown-info">
+                <span>{typeLabels[t.type] ?? t.type}</span>
+                <span>{t.count} file{t.count !== 1 ? "s" : ""}</span>
+              </div>
+              <div class="breakdown-bar">
+                <div class="bar-fill" style="width:{pct}%"></div>
+              </div>
+              <span class="breakdown-pct">{pct.toFixed(0)}%</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="empty-chart">No data yet</div>
+      {/if}
     </div>
 
     <div class="chart-card">
       <h2>File Size Distribution</h2>
       {#if data.sizeDist.some((s: { count: number }) => s.count > 0)}
-        <ul class="size-list">
-          {#each data.sizeDist as s}
-            <li><span>{s.label}</span><span>{s.count} files</span></li>
-          {/each}
-        </ul>
+        <Chart type="bar" data={sizeChartData} options={noLegendOptions} height="280px" />
       {:else}
-        <p>No data yet</p>
+        <div class="empty-chart">No data yet</div>
       {/if}
     </div>
   </div>
 
   <div class="chart-grid">
     <div class="chart-card">
-      <h2>Upload Activity (30 days)</h2>
+      <div class="chart-title-row">
+        <TrendingUp size={18} />
+        <h2>Upload Activity (30 days)</h2>
+      </div>
       {#if data.recentUploads.some((d: { count: number }) => d.count > 0)}
-        <ul class="activity-list">
-          {#each data.recentUploads as d}
-            <li><span>{d.date}</span><span>{d.count} uploads</span></li>
-          {/each}
-        </ul>
+        <Chart type="line" data={activityChartData} options={noLegendOptions} height="280px" />
       {:else}
-        <p>No uploads yet</p>
+        <div class="empty-chart">No uploads yet</div>
       {/if}
     </div>
 
     <div class="chart-card">
       <h2>Top Downloads</h2>
       {#if data.topDownloads.length > 0}
-        <ol class="downloads-list">
-          {#each data.topDownloads as f}
-            <li><span>{f.originalName}</span><span>{f.downloads} downloads</span></li>
-          {/each}
-        </ol>
+        <Chart type="bar" data={topDownloadsChartData} options={barLegendOptions} height="280px" />
       {:else}
-        <p>No downloads yet</p>
+        <div class="empty-chart">No downloads yet</div>
       {/if}
     </div>
   </div>

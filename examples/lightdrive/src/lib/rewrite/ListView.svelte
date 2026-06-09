@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatSize, formatFullDate, getPreviewUrl, isVideoType } from "./helpers";
+  import { Folder, FileText } from "@lucide/svelte";
 
   let failedImages = $state<Set<string>>(new Set());
   function imgError(fileId: string) {
@@ -73,7 +74,7 @@
       <button class="col-header col-date" onclick={() => updateSort?.("date")}>
         Created{sortIndicator?.("date") === "asc" ? " ↑" : sortIndicator?.("date") === "desc" ? " ↓" : ""}
       </button>
-      <span class="col-owner">Owner</span>
+      <span class="col-header col-owner">Owner</span>
     </div>
     {#each folders as f}
       <div
@@ -89,7 +90,7 @@
         onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, true); }}
       >
         <span class="col-name">
-          <span class="list-thumb-placeholder">[folder]</span>
+          <span class="list-thumb-placeholder"><Folder size={16} /></span>
           <span class="name-text">{f.name}</span>
         </span>
         <span class="col-size">{formatSize(folderSizes[f.id] ?? 0)}</span>
@@ -114,7 +115,7 @@
           {#if f.hasPreview || (isVideoType(f.type, f.originalName) && !failedImages.has(f.id))}
             <img src={getPreviewUrl(f.id, driveId)} alt="" class="list-thumb" onerror={() => imgError(f.id)} />
           {:else}
-            <span class="list-thumb-placeholder">[file]</span>
+            <span class="list-thumb-placeholder"><FileText size={16} /></span>
           {/if}
           <span class="name-text">{f.originalName}</span>
         </span>

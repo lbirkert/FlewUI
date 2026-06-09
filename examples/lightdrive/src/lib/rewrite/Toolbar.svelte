@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Search, Plus, Upload, List, Grid3x3, Pen, Share2, ArrowRight, Trash2, X } from "@lucide/svelte";
+
   type FilterOption = { value: string; label: string };
   type SortOption = { value: string; label: string };
 
@@ -75,42 +77,42 @@
       <span class="selection-count">{selectedCount} selected</span>
       <span class="toolbar-spacer"></span>
       {#if canRenameSelection}
-        <button class="toolbar-btn" onclick={onRename}>Rename</button>
+        <button class="toolbar-btn" onclick={onRename}><Pen size={14} /> Rename</button>
       {/if}
       {#if canShareSelection}
-        <button class="toolbar-btn" onclick={onShare}>Share</button>
+        <button class="toolbar-btn" onclick={onShare}><Share2 size={14} /> Share</button>
       {/if}
       {#if canMoveSelection}
-        <button class="toolbar-btn" onclick={onMove}>Move</button>
+        <button class="toolbar-btn" onclick={onMove}><ArrowRight size={14} /> Move</button>
       {/if}
       {#if canDeleteSelection}
-        <button class="toolbar-btn" onclick={onDelete}>Delete</button>
+        <button class="toolbar-btn" onclick={onDelete}><Trash2 size={14} /> Delete</button>
       {/if}
-      <button class="toolbar-btn" onclick={onClearSelection}>Cancel</button>
+      <button class="toolbar-btn" onclick={onClearSelection}><X size={14} /> Cancel</button>
     {:else}
       <nav class="breadcrumb-desktop">
         {#each breadcrumbs as crumb, i}
           {#if i > 0}<span class="breadcrumb-sep">/</span>{/if}
-          <button class="breadcrumb-btn" onclick={() => onnavigate?.(crumb.id)}>{crumb.name}</button>
+          <a class="breadcrumb-btn" href="/ui-rewrite/drive/{crumb.id || ''}" onclick={(e) => { e.preventDefault(); onnavigate?.(crumb.id); }}>{crumb.name}</a>
         {/each}
       </nav>
       <nav class="breadcrumb-mobile">
         {#if breadcrumbs.length > 1}
-          <button class="back-btn" onclick={() => onnavigate?.(breadcrumbs[breadcrumbs.length - 2].id)} aria-label="Back">&larr;</button>
+          <a class="back-btn" href="/ui-rewrite/drive/{breadcrumbs[breadcrumbs.length - 2]?.id || ''}" onclick={(e) => { e.preventDefault(); onnavigate?.(breadcrumbs[breadcrumbs.length - 2]?.id); }} aria-label="Back">&larr;</a>
         {/if}
         <span class="current-folder">{breadcrumbs[breadcrumbs.length - 1]?.name ?? ""}</span>
       </nav>
-      <button class="toolbar-btn" onclick={() => searchOpen = !searchOpen}>Search</button>
+      <button class="toolbar-btn" onclick={() => searchOpen = !searchOpen}><Search size={14} /> Search</button>
       {#if showNewButton}
-        <button class="toolbar-btn" onclick={onnewclick}>New</button>
+        <button class="toolbar-btn" onclick={onnewclick}><Plus size={14} /> New</button>
       {/if}
       {#if showUploadButton}
-        <button class="toolbar-btn" onclick={onuploadclick}>Upload</button>
+        <button class="toolbar-btn" onclick={onuploadclick}><Upload size={14} /> Upload</button>
       {/if}
       {#if showViewToggle}
         <div class="view-toggle">
-          <button class="view-btn" class:active={viewMode === "list"} onclick={() => onviewmodechange?.("list")} aria-label="List view">List</button>
-          <button class="view-btn" class:active={viewMode === "grid"} onclick={() => onviewmodechange?.("grid")} aria-label="Grid view">Grid</button>
+          <a class="view-btn" class:active={viewMode === "list"} href="#list" aria-label="List view"><List size={14} /> List</a>
+          <a class="view-btn" class:active={viewMode === "grid"} href="#grid" aria-label="Grid view"><Grid3x3 size={14} /> Grid</a>
         </div>
       {/if}
     {/if}

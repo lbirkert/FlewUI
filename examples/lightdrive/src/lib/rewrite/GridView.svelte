@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatSize, getPreviewUrl, isImageType, isVideoType } from "./helpers";
+  import { Folder, FileText } from "@lucide/svelte";
 
   let failedImages = $state<Set<string>>(new Set());
   function imgError(fileId: string) {
@@ -72,7 +73,7 @@
         tabindex={0}
         onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, true); }}
       >
-        <div class="grid-preview">[folder]</div>
+        <div class="grid-preview"><Folder size={24} /></div>
         <div class="grid-info">
           <span class="grid-name">{f.name}</span>
           <span class="grid-size">{formatSize(folderSizes[f.id] ?? 0)}</span>
@@ -98,7 +99,7 @@
           {:else if isImageType(f.type)}
             <img src="/api/drive/{driveId}/files/{f.id}/download" alt={f.originalName} class="grid-thumb" loading="lazy" />
           {:else}
-            <span>[file]</span>
+            <FileText size={24} />
           {/if}
         </div>
         <div class="grid-info">

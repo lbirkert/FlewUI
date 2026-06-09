@@ -19,7 +19,7 @@ export class DriveStore {
   driveId = $derived(this.data.driveId);
   isShared = $derived(this.data.isShared);
 
-  viewMode: ViewMode;
+  viewMode: ViewMode = $state("list");
 
   dragOver = $state(false);
 
@@ -52,7 +52,7 @@ export class DriveStore {
   confirmOpen = $state(false);
   confirmTitle = $state("");
   confirmMessage = $state("");
-  confirmAction = $state<() => void>(() => {});
+  confirmAction = $state<() => void>(() => { });
 
   shareDialogOpen = $state(false);
   showShareDialog = $state<ShareDialogState | null>(null);
@@ -238,9 +238,11 @@ export class DriveStore {
   closeFilePreview = () => {
     const folder = this.currentFolderId();
     if (this.isShared && this.shareInfo?.type === "file") return;
-    this.kit.goto(
-      folder ? `/ui-rewrite/drive/${this.driveId}?folder=${folder}` : `/ui-rewrite/drive/${this.driveId}`
-    );
+    setTimeout(() => {
+      this.kit.goto(
+        folder ? `/ui-rewrite/drive/${this.driveId}?folder=${folder}` : `/ui-rewrite/drive/${this.driveId}`
+      );
+    })
   };
 
   goToPrevFile = () => {
@@ -321,7 +323,7 @@ export class DriveStore {
       });
       this.creatingItem = false;
       if (res.ok) { this.showNewItem = false; this.newItemName = ""; this.kit.invalidate("app:drive"); }
-      else { const r = await res.json(); this.showConfirm("Error", r.error || "Failed to create folder", () => {}); }
+      else { const r = await res.json(); this.showConfirm("Error", r.error || "Failed to create folder", () => { }); }
     } else {
       const res = await fetch(`/api/drive/${this.driveId}/files/document`, {
         method: "POST",
@@ -330,7 +332,7 @@ export class DriveStore {
       });
       this.creatingItem = false;
       if (res.ok) { this.showNewItem = false; this.newItemName = ""; this.kit.invalidate("app:drive"); }
-      else { const r = await res.json(); this.showConfirm("Error", r.error || "Failed to create document", () => {}); }
+      else { const r = await res.json(); this.showConfirm("Error", r.error || "Failed to create document", () => { }); }
     }
   };
 

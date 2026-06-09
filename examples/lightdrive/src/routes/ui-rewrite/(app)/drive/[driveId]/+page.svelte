@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { X, ChevronLeft, ChevronRight, Pen, Download, Share2, Trash2 } from "@lucide/svelte";
   import { page } from "$app/stores";
-  import { goto, invalidate, replaceState, beforeNavigate, afterNavigate } from "$app/navigation";
+  import { goto, invalidate, beforeNavigate, afterNavigate } from "$app/navigation";
   import { formatSize, formatDate, formatFullDate, getPreviewUrl } from "$lib/rewrite/helpers";
   import { formatSpeed, formatEta } from "$lib/rewrite/drive-utils";
   import Toolbar from "$lib/rewrite/Toolbar.svelte";
@@ -17,9 +18,12 @@
   $effect(() => { store.pageUrl = $page.url; });
 
   $effect(() => {
-    const hash = store.viewMode === "grid" ? "#grid" : "";
-    const url = $page.url.pathname + $page.url.search + hash;
-    if ($page.url.hash !== hash) replaceState(url, {});
+    const hash = $page.url.hash;
+    if (hash === "#grid" && store.viewMode !== "grid") {
+      store.viewMode = "grid";
+    } else if (hash !== "#grid" && store.viewMode !== "list") {
+      store.viewMode = "list";
+    }
   });
 
   $effect(() => {
@@ -63,7 +67,7 @@
 <div class="drive-container">
   {#if store.isShared && store.shareInfo?.type === "file"}
     <div class="content-area">
-      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.sharePreviewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} previewFiles={store.previewFiles} previewFileIndex={0} bind:editMode={store.editMode} bind:editText={store.editText} ongotoprev={() => {}} ongotonext={() => {}} onenableedit={store.canEdit ? store.enableEdit : undefined} onsaveedit={store.canEdit ? store.saveEdit : undefined} oncanceledit={store.canEdit ? store.cancelEdit : undefined} ondelete={store.canDelete ? () => store.handleDelete(store.shareInfo!.file!.id) : undefined} />
+      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.sharePreviewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} bind:editMode={store.editMode} bind:editText={store.editText} />
     </div>
   {:else if !store.isShared && !store.data.user}
     <div class="unauthorized">
@@ -71,34 +75,63 @@
       <a href="/ui-rewrite/auth" class="btn-primary">Sign In</a>
     </div>
   {:else}
-    <Toolbar
-      breadcrumbs={store.displayBreadcrumbs}
-      viewMode={store.viewMode}
-      onnavigate={store.navigateTo}
-      onviewmodechange={(m) => store.viewMode = m}
-      showNewButton={store.canUpload}
-      onnewclick={() => { store.showNewItem = true; store.newItemType = "folder"; store.newItemName = ""; }}
-      showUploadButton={store.canUpload}
-      onuploadclick={() => document.querySelector<HTMLInputElement>("#drive-file-input")?.click()}
-      hasSelection={store.hasSelection}
-      selectedCount={store.selectedCount}
-      canRenameSelection={store.canRenameSelection}
-      canShareSelection={store.canShareSelection}
-      canMoveSelection={store.canMoveSelection}
-      canDeleteSelection={store.canDeleteSelection}
-      onRename={store.handleSelectionRename}
-      onShare={store.handleSelectionShare}
-      onMove={store.handleSelectionMove}
-      onDelete={store.handleBulkDelete}
-      onClearSelection={store.clearSelection}
-      bind:searchOpen={store.searchOpen}
-      bind:searchQuery={store.searchQuery}
-      bind:filterType={store.filterType}
-      bind:sortMode={store.sortMode}
-      onsearchclear={() => store.searchQuery = ""}
-      onfilterchange={(v) => store.filterType = v}
-      onsortchange={(v) => store.sortMode = v as any}
-    />
+    {#if store.filePreviewId}
+      <div class="preview-toolbar">
+        <button class="preview-toolbar-close" onclick={store.closeFilePreview} aria-label="Close preview">
+          <X size={18} />
+        </button>
+        <span class="preview-toolbar-name">{store.previewFile?.originalName ?? ""}</span>
+        <span class="toolbar-spacer"></span>
+        <div class="preview-toolbar-actions">
+          <button class="preview-toolbar-btn" disabled={store.previewFileIndex <= 0} onclick={store.goToPrevFile} aria-label="Previous"><ChevronLeft size={16} /></button>
+          <button class="preview-toolbar-btn" disabled={store.previewFileIndex < 0 || store.previewFileIndex >= store.previewFiles.length - 1} onclick={store.goToNextFile} aria-label="Next"><ChevronRight size={16} /></button>
+          {#if store.editMode}
+            <button class="preview-toolbar-btn" onclick={store.saveEdit}>Save</button>
+            <button class="preview-toolbar-btn" onclick={store.cancelEdit}>Cancel</button>
+          {:else if !store.isShared && store.canEdit}
+            <button class="preview-toolbar-btn" onclick={store.enableEdit}><Pen size={14} /> Edit</button>
+          {/if}
+          {#if store.previewFile}
+            <a class="preview-toolbar-btn" href="/api/drive/{store.driveId}/files/{store.previewFile.id}/download" download={store.previewFile.originalName}><Download size={14} /> Download</a>
+          {/if}
+          {#if !store.isShared}
+            <button class="preview-toolbar-btn" onclick={() => store.previewFile && store.openShareDialog(store.previewFile.id, store.previewFile.originalName, "file")}><Share2 size={14} /> Share</button>
+          {/if}
+          {#if store.canDelete}
+            <button class="preview-toolbar-btn" onclick={() => store.handleDeletePreview(store.previewFile!.id)}><Trash2 size={14} /> Delete</button>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <Toolbar
+        breadcrumbs={store.displayBreadcrumbs}
+        viewMode={store.viewMode}
+        onnavigate={store.navigateTo}
+        onviewmodechange={(m) => store.viewMode = m}
+        showNewButton={store.canUpload}
+        onnewclick={() => { store.showNewItem = true; store.newItemType = "folder"; store.newItemName = ""; }}
+        showUploadButton={store.canUpload}
+        onuploadclick={() => document.querySelector<HTMLInputElement>("#drive-file-input")?.click()}
+        hasSelection={store.hasSelection}
+        selectedCount={store.selectedCount}
+        canRenameSelection={store.canRenameSelection}
+        canShareSelection={store.canShareSelection}
+        canMoveSelection={store.canMoveSelection}
+        canDeleteSelection={store.canDeleteSelection}
+        onRename={store.handleSelectionRename}
+        onShare={store.handleSelectionShare}
+        onMove={store.handleSelectionMove}
+        onDelete={store.handleBulkDelete}
+        onClearSelection={store.clearSelection}
+        bind:searchOpen={store.searchOpen}
+        bind:searchQuery={store.searchQuery}
+        bind:filterType={store.filterType}
+        bind:sortMode={store.sortMode}
+        onsearchclear={() => store.searchQuery = ""}
+        onfilterchange={(v) => store.filterType = v}
+        onsortchange={(v) => store.sortMode = v as any}
+      />
+    {/if}
 
     <form method="POST" enctype="multipart/form-data" style="display:none" onsubmit={store.handleUpload}>
       <input id="drive-file-input" type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm" onchange={(e) => { (e.currentTarget as HTMLInputElement).form?.requestSubmit(); }} />
@@ -141,7 +174,7 @@
         </div>
       {/if}
 
-      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.previewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} previewFiles={store.previewFiles} previewFileIndex={store.previewFileIndex} bind:editMode={store.editMode} bind:editText={store.editText} onclose={store.closeFilePreview} ongotoprev={store.goToPrevFile} ongotonext={store.goToNextFile} onenableedit={!store.isShared ? store.enableEdit : undefined} onsaveedit={!store.isShared ? store.saveEdit : undefined} oncanceledit={!store.isShared ? store.cancelEdit : undefined} onshare={!store.isShared ? store.openShareDialog : undefined} ondelete={store.canDelete ? store.handleDeletePreview : undefined} />
+      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.previewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} bind:editMode={store.editMode} bind:editText={store.editText} />
 
       {#if !store.filePreviewId}
         {#if store.viewMode === "grid"}

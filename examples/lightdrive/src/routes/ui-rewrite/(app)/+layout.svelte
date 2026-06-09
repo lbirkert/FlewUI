@@ -1,5 +1,8 @@
 <script lang="ts">
+  import "$lib/styles/styles.css";
+  import { ModeWatcher } from "mode-watcher";
   import { page } from "$app/stores";
+  import { Folder, BarChart3, LogIn, LogOut, User, Settings, Link, HardDrive, Menu } from "@lucide/svelte";
 
   let { data, children }: { data: { user: { id: string; name: string; email: string } | null }; children: import("svelte").Snippet } = $props();
   let user = $derived(data.user);
@@ -11,21 +14,25 @@
   }
 
   const links = [
-    { href: "/ui-rewrite/drive", label: "Drive" },
-    { href: "/ui-rewrite/dashboard", label: "Dashboard" },
+    { href: "/ui-rewrite/drive", label: "Drive", icon: Folder },
+    { href: "/ui-rewrite/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 </script>
 
+<ModeWatcher />
 <input type="checkbox" id="mobile-menu-toggle" class="mobile-menu-checkbox" />
 <div class="app-shell">
   <header class="app-header">
-    <a href="/ui-rewrite/drive" class="logo">LightDrive</a>
+    <a href="/ui-rewrite/drive" class="logo"><HardDrive size={18} /> LightDrive</a>
 
     <nav class="desktop-nav">
       <ul>
-        {#each links as { href, label }}
+        {#each links as { href, label, icon: Icon }}
           <li>
-            <a href={href} class:active={$page.url.pathname.startsWith(href)}>{label}</a>
+            <a href={href} class="nav-link" class:active={$page.url.pathname.startsWith(href)}>
+              <Icon size={14} />
+              {label}
+            </a>
           </li>
         {/each}
       </ul>
@@ -37,7 +44,7 @@
       {#if user}
         <div class="user-menu">
           <button
-            class="user-btn"
+            class="user-btn ghost"
             onclick={() => userMenuOpen = !userMenuOpen}
             onblur={() => setTimeout(() => userMenuOpen = false, 150)}
           >
@@ -47,12 +54,12 @@
           {#if userMenuOpen}
             <nav class="user-dropdown">
               <ul>
-                <li><a href="/ui-rewrite/account" onclick={() => userMenuOpen = false}>Account</a></li>
-                <li><a href="/ui-rewrite/account/preferences" onclick={() => userMenuOpen = false}>Preferences</a></li>
-                <li><a href="/ui-rewrite/account/shares" onclick={() => userMenuOpen = false}>Share Links</a></li>
+                <li><a href="/ui-rewrite/account" class="nav-link" onclick={() => userMenuOpen = false}><User size={14} /> Account</a></li>
+                <li><a href="/ui-rewrite/account/preferences" class="nav-link" onclick={() => userMenuOpen = false}><Settings size={14} /> Preferences</a></li>
+                <li><a href="/ui-rewrite/account/shares" class="nav-link" onclick={() => userMenuOpen = false}><Link size={14} /> Share Links</a></li>
                 <li>
                   <form action="/api/auth/logout" method="POST" onsubmit={() => userMenuOpen = false}>
-                    <button type="submit">Sign Out</button>
+                    <button type="submit" class="nav-link"><LogOut size={14} /> Sign Out</button>
                   </form>
                 </li>
               </ul>
@@ -60,11 +67,11 @@
           {/if}
         </div>
       {:else}
-        <a href="/ui-rewrite/auth" class="sign-in-link">Sign In</a>
+        <a href="/ui-rewrite/auth" class="sign-in-link"><LogIn size={14} /> Sign In</a>
       {/if}
     </div>
 
-    <label class="burger-label" for="mobile-menu-toggle" aria-label="Menu">&#9776;</label>
+    <label class="burger-label" for="mobile-menu-toggle" aria-label="Menu"><Menu size={22} /></label>
   </header>
 
   <div class="app-content">
@@ -72,9 +79,10 @@
       <label class="mobile-overlay-close" for="mobile-menu-toggle"></label>
       <nav class="mobile-menu">
         <ul>
-          {#each links as { href, label }}
+          {#each links as { href, label, icon: Icon }}
             <li>
-              <a href={href} onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>
+              <a href={href} class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>
+                <Icon size={18} />
                 {label}
               </a>
             </li>
@@ -90,19 +98,19 @@
             </div>
           </div>
           <ul>
-            <li><a href="/ui-rewrite/account" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>Account</a></li>
-            <li><a href="/ui-rewrite/account/preferences" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>Preferences</a></li>
-            <li><a href="/ui-rewrite/account/shares" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>Share Links</a></li>
+            <li><a href="/ui-rewrite/account" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><User size={18} /> Account</a></li>
+            <li><a href="/ui-rewrite/account/preferences" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><Settings size={18} /> Preferences</a></li>
+            <li><a href="/ui-rewrite/account/shares" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><Link size={18} /> Share Links</a></li>
             <li>
               <form action="/api/auth/logout" method="POST">
-                <button type="submit" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>Sign Out</button>
+                <button type="submit" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><LogOut size={18} /> Sign Out</button>
               </form>
             </li>
           </ul>
         {:else}
           <hr />
           <ul>
-            <li><a href="/ui-rewrite/auth" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}>Sign In</a></li>
+            <li><a href="/ui-rewrite/auth" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><LogIn size={18} /> Sign In</a></li>
           </ul>
         {/if}
       </nav>
@@ -113,44 +121,3 @@
   </div>
 </div>
 
-<style>
-  .app-shell { display: flex; flex-direction: column; height: 100dvh; }
-  .app-header { display: flex; align-items: center; padding: 8px 16px; flex-shrink: 0; }
-  .app-content { flex: 1; position: relative; min-height: 0; }
-  .app-main { position: absolute; inset: 0; overflow-y: auto; }
-  .logo { text-decoration: none; }
-  nav ul { list-style: none; margin: 0; padding: 0; display: flex; }
-  nav li { margin: 0; }
-  .desktop-nav a { text-decoration: none; }
-  .header-spacer { flex: 1; }
-  .desktop-user { display: flex; align-items: center; }
-  .user-menu { position: relative; }
-  .user-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; }
-  .user-dropdown { position: absolute; right: 0; top: 100%; margin-top: 4px; min-width: 140px; z-index: 100; }
-  .user-dropdown ul { flex-direction: column; }
-  .user-dropdown a, .user-dropdown button { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; cursor: pointer; text-decoration: none; }
-  .user-name { }
-  .sign-in-link { }
-
-  .burger-label { display: none; cursor: pointer; }
-  .mobile-menu-checkbox { display: none; position: absolute; opacity: 0; width: 0; height: 0; }
-
-  .mobile-overlay { display: none; position: absolute; inset: 0; z-index: 50; flex-direction: column; }
-  #mobile-menu-toggle:checked ~ .app-shell .mobile-overlay { display: flex; }
-  .mobile-overlay-close { position: absolute; inset: 0; cursor: default; }
-  .mobile-menu { position: relative; z-index: 1; padding: 16px; overflow-y: auto; }
-  .mobile-menu ul { flex-direction: column; gap: 4px; }
-  .mobile-menu a, .mobile-menu button { display: flex; align-items: center; gap: 12px; padding: 14px 12px; text-decoration: none; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
-  .mobile-user-info { display: flex; align-items: center; gap: 12px; padding: 12px; }
-  .mobile-user-name { }
-  .mobile-user-email { }
-  hr { margin: 8px 0; }
-
-  .avatar-inline, .avatar-large { }
-
-  @media (max-width: 768px) {
-    .desktop-nav { display: none; }
-    .desktop-user { display: none; }
-    .burger-label { display: block; }
-  }
-</style>
