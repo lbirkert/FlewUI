@@ -24,7 +24,7 @@ export interface FileItem {
   originalName: string;
   type: string;
   size: number;
-  uploadedAt: string;
+  uploadedAt: string | Date;
   hasPreview: boolean;
   name?: string;
 }
@@ -33,7 +33,7 @@ export interface FolderItem {
   id: string;
   name: string;
   parentId: string | null;
-  createdAt?: string;
+  createdAt?: string | Date;
 }
 
 export interface BreadcrumbItem {

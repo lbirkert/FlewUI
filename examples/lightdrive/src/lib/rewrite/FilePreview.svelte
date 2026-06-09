@@ -9,26 +9,14 @@
     previewContent: any;
     previewLoading: boolean;
     previewError: string;
-    previewFiles: any[];
-    previewFileIndex: number;
     editMode: boolean;
     editText: string;
-    onclose?: () => void;
-    ongotoprev: () => void;
-    ongotonext: () => void;
-    onenableedit?: () => void;
-    onsaveedit?: () => void;
-    oncanceledit?: () => void;
-    onshare?: (id: string, name: string, type: "file" | "folder") => void;
-    ondelete?: (id: string) => void;
   };
 
   let {
     driveId, filePreviewId, previewFile, previewCategory, previewContent,
-    previewLoading, previewError, previewFiles, previewFileIndex,
+    previewLoading, previewError,
     editMode = $bindable(), editText = $bindable(),
-    onclose, ongotoprev, ongotonext, onenableedit, onsaveedit, oncanceledit,
-    onshare, ondelete,
   }: Props = $props();
 
   function isEditable() {

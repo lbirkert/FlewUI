@@ -2,6 +2,7 @@
   import "$lib/styles/styles.css";
   import { ModeWatcher } from "mode-watcher";
   import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
   import { Folder, BarChart3, LogIn, LogOut, User, Settings, Link, HardDrive, Menu } from "@lucide/svelte";
 
   let { data, children }: { data: { user: { id: string; name: string; email: string } | null }; children: import("svelte").Snippet } = $props();
@@ -11,6 +12,11 @@
 
   function getInitials(name: string) {
     return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    goto("/ui-rewrite/auth");
   }
 
   const links = [
@@ -58,9 +64,7 @@
                 <li><a href="/ui-rewrite/account/preferences" class="nav-link" onclick={() => userMenuOpen = false}><Settings size={14} /> Preferences</a></li>
                 <li><a href="/ui-rewrite/account/shares" class="nav-link" onclick={() => userMenuOpen = false}><Link size={14} /> Share Links</a></li>
                 <li>
-                  <form action="/api/auth/logout" method="POST" onsubmit={() => userMenuOpen = false}>
-                    <button type="submit" class="nav-link"><LogOut size={14} /> Sign Out</button>
-                  </form>
+                  <button class="nav-link" onclick={() => { userMenuOpen = false; logout(); }}><LogOut size={14} /> Sign Out</button>
                 </li>
               </ul>
             </nav>
@@ -102,9 +106,7 @@
             <li><a href="/ui-rewrite/account/preferences" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><Settings size={18} /> Preferences</a></li>
             <li><a href="/ui-rewrite/account/shares" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><Link size={18} /> Share Links</a></li>
             <li>
-              <form action="/api/auth/logout" method="POST">
-                <button type="submit" class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; }}><LogOut size={18} /> Sign Out</button>
-              </form>
+              <button class="nav-link" onclick={() => { const cb = document.getElementById('mobile-menu-toggle') as HTMLInputElement; if (cb) cb.checked = false; logout(); }}><LogOut size={18} /> Sign Out</button>
             </li>
           </ul>
         {:else}

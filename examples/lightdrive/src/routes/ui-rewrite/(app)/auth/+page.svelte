@@ -1,37 +1,84 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { required, email, minLength, pipe } from "$lib/rewrite/validators";
+  import type { Rule } from "$lib/rewrite/validators";
 
   let tab = $state("login");
-  let errorMessage = $state("");
-  let showError = $state(false);
+
+  let errors = $state<Record<string, string>>({});
+  let loading = $state(false);
+  let serverError = $state("");
+
+  let lEmail = $state("");
+  let lPassword = $state("");
+  let lShowPassword = $state(false);
+
+  let sName = $state("");
+  let sEmail = $state("");
+  let sPassword = $state("");
+  let sShowPassword = $state(false);
+
+  function validateLogin() {
+    const e: Record<string, string> = {};
+    const chk = (id: string, val: string, rule: Rule) => {
+      const msg = rule(val);
+      if (msg) e[id] = msg;
+    };
+    chk("l-email", lEmail, pipe(required(), email()));
+    chk("l-password", lPassword, pipe(required(), minLength(8)));
+    return e;
+  }
+
+  function validateSignup() {
+    const e: Record<string, string> = {};
+    const chk = (id: string, val: string, rule: Rule) => {
+      const msg = rule(val);
+      if (msg) e[id] = msg;
+    };
+    chk("s-name", sName, required());
+    chk("s-email", sEmail, pipe(required(), email()));
+    chk("s-password", sPassword, pipe(required(), minLength(8)));
+    return e;
+  }
 
   async function handleLogin(e: SubmitEvent) {
-    const form = e.currentTarget as HTMLFormElement;
-    const fd = new FormData(form);
-    const email = fd.get("l-email");
-    const password = fd.get("l-password");
+    e.preventDefault();
+    const v = validateLogin();
+    errors = v;
+    if (Object.keys(v).length) return;
+    loading = true;
+    serverError = "";
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: lEmail, password: lPassword }),
     });
+    loading = false;
     if (res.ok) goto("/ui-rewrite/drive");
-    else { const r = await res.json(); errorMessage = r.error; showError = true; }
+    else { const r = await res.json(); serverError = r.error || "Something went wrong"; }
   }
 
   async function handleSignup(e: SubmitEvent) {
-    const form = e.currentTarget as HTMLFormElement;
-    const fd = new FormData(form);
-    const name = fd.get("s-name");
-    const email = fd.get("s-email");
-    const password = fd.get("s-password");
+    e.preventDefault();
+    const v = validateSignup();
+    errors = v;
+    if (Object.keys(v).length) return;
+    loading = true;
+    serverError = "";
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name: sName, email: sEmail, password: sPassword }),
     });
+    loading = false;
     if (res.ok) goto("/ui-rewrite/drive");
-    else { const r = await res.json(); errorMessage = r.error; showError = true; }
+    else { const r = await res.json(); serverError = r.error || "Something went wrong"; }
+  }
+
+  function focusField(key: string) {
+    const next = { ...errors };
+    delete next[key];
+    errors = next;
   }
 </script>
 
@@ -44,50 +91,52 @@
 
     <div class="auth-card">
       <div class="tabs">
-        <button class="tab" class:active={tab === "login"} onclick={() => tab = "login"}>Sign In</button>
-        <button class="tab" class:active={tab === "signup"} onclick={() => tab = "signup"}>Sign Up</button>
+        <button class="tab" class:active={tab === "login"} onclick={() => { tab = "login"; errors = {}; serverError = ""; }}>Sign In</button>
+        <button class="tab" class:active={tab === "signup"} onclick={() => { tab = "signup"; errors = {}; serverError = ""; }}>Sign Up</button>
       </div>
 
       {#if tab === "login"}
-        <form class="auth-form" onsubmit={handleLogin}>
-          <div class="field">
+        <form class="auth-form" onsubmit={handleLogin} novalidate>
+          <div class="field" class:field-error={errors["l-email"]}>
             <label for="l-email">Email</label>
-            <input id="l-email" name="l-email" type="email" placeholder="you@example.com" required />
+            <input id="l-email" type="email" placeholder="you@example.com" bind:value={lEmail} oninput={() => focusField("l-email")} />
+            {#if errors["l-email"]}<span class="field-msg">{errors["l-email"]}</span>{/if}
           </div>
-          <div class="field">
+          <div class="field" class:field-error={errors["l-password"]}>
             <label for="l-password">Password</label>
-            <input id="l-password" name="l-password" type="password" placeholder="Enter password" required />
+            <div class="password-wrap">
+              <input id="l-password" type={lShowPassword ? "text" : "password"} placeholder="Enter password" bind:value={lPassword} oninput={() => focusField("l-password")} />
+              <button type="button" class="password-toggle" onclick={() => lShowPassword = !lShowPassword} aria-label="Toggle password visibility">{lShowPassword ? "Hide" : "Show"}</button>
+            </div>
+            {#if errors["l-password"]}<span class="field-msg">{errors["l-password"]}</span>{/if}
           </div>
-          <button type="submit" class="btn-primary">Sign In</button>
+          {#if serverError}<p class="server-error">{serverError}</p>{/if}
+          <button type="submit" class="btn-primary" disabled={loading}>{loading ? "Signing in\u2026" : "Sign In"}</button>
         </form>
       {:else}
-        <form class="auth-form" onsubmit={handleSignup}>
-          <div class="field">
+        <form class="auth-form" onsubmit={handleSignup} novalidate>
+          <div class="field" class:field-error={errors["s-name"]}>
             <label for="s-name">Full Name</label>
-            <input id="s-name" name="s-name" placeholder="Jane Doe" required />
+            <input id="s-name" placeholder="Jane Doe" bind:value={sName} oninput={() => focusField("s-name")} />
+            {#if errors["s-name"]}<span class="field-msg">{errors["s-name"]}</span>{/if}
           </div>
-          <div class="field">
+          <div class="field" class:field-error={errors["s-email"]}>
             <label for="s-email">Email</label>
-            <input id="s-email" name="s-email" type="email" placeholder="you@example.com" required />
+            <input id="s-email" type="email" placeholder="you@example.com" bind:value={sEmail} oninput={() => focusField("s-email")} />
+            {#if errors["s-email"]}<span class="field-msg">{errors["s-email"]}</span>{/if}
           </div>
-          <div class="field">
+          <div class="field" class:field-error={errors["s-password"]}>
             <label for="s-password">Password</label>
-            <input id="s-password" name="s-password" type="password" placeholder="Create a password" required />
+            <div class="password-wrap">
+              <input id="s-password" type={sShowPassword ? "text" : "password"} placeholder="Create a password" bind:value={sPassword} oninput={() => focusField("s-password")} />
+              <button type="button" class="password-toggle" onclick={() => sShowPassword = !sShowPassword} aria-label="Toggle password visibility">{sShowPassword ? "Hide" : "Show"}</button>
+            </div>
+            {#if errors["s-password"]}<span class="field-msg">{errors["s-password"]}</span>{/if}
           </div>
-          <button type="submit" class="btn-primary">Create Account</button>
+          {#if serverError}<p class="server-error">{serverError}</p>{/if}
+          <button type="submit" class="btn-primary" disabled={loading}>{loading ? "Creating account\u2026" : "Create Account"}</button>
         </form>
       {/if}
     </div>
   </div>
 </div>
-
-{#if showError}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => showError = false}>
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
-      <h2>Error</h2>
-      <p>{errorMessage}</p>
-      <button class="btn-primary" onclick={() => showError = false}>OK</button>
-    </div>
-  </div>
-{/if}

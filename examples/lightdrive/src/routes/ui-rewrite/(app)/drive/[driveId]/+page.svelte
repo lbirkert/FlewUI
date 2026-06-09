@@ -1,8 +1,26 @@
 <script lang="ts">
-  import { X, ChevronLeft, ChevronRight, Pen, Download, Share2, Trash2 } from "@lucide/svelte";
-  import { page } from "$app/stores";
-  import { goto, invalidate, beforeNavigate, afterNavigate } from "$app/navigation";
-  import { formatSize, formatDate, formatFullDate, getPreviewUrl } from "$lib/rewrite/helpers";
+  import {
+    X,
+    ChevronLeft,
+    ChevronRight,
+    Pen,
+    Download,
+    Share2,
+    Trash2,
+  } from "@lucide/svelte";
+  import { page } from "$app/state";
+  import {
+    goto,
+    invalidate,
+    beforeNavigate,
+    afterNavigate,
+  } from "$app/navigation";
+  import {
+    formatSize,
+    formatDate,
+    formatFullDate,
+    getPreviewUrl,
+  } from "$lib/rewrite/helpers";
   import { formatSpeed, formatEta } from "$lib/rewrite/drive-utils";
   import Toolbar from "$lib/rewrite/Toolbar.svelte";
   import FilePreview from "$lib/rewrite/FilePreview.svelte";
@@ -12,13 +30,17 @@
 
   let { data } = $props();
 
-  const store = new DriveStore(data, { goto, invalidate }, $page.url);
-
-  $effect(() => { store.data = data; });
-  $effect(() => { store.pageUrl = $page.url; });
+  const store = new DriveStore(data, { goto, invalidate }, page.url);
 
   $effect(() => {
-    const hash = $page.url.hash;
+    store.data = data;
+  });
+  $effect(() => {
+    store.pageUrl = page.url;
+  });
+
+  $effect(() => {
+    const hash = page.url.hash;
     if (hash === "#grid" && store.viewMode !== "grid") {
       store.viewMode = "grid";
     } else if (hash !== "#grid" && store.viewMode !== "list") {
@@ -28,21 +50,36 @@
 
   $effect(() => {
     if (store.uploading) {
-      const id = setInterval(() => store.now = Date.now(), 250);
+      const id = setInterval(() => (store.now = Date.now()), 250);
       return () => clearInterval(id);
     }
   });
 
   $effect(() => {
-    function onOnline() { store.isOnline = true; store.onlineResolve?.(); store.onlineResolve = null; }
-    function onOffline() { store.isOnline = false; store.currentXhr?.abort(); }
+    function onOnline() {
+      store.isOnline = true;
+      store.onlineResolve?.();
+      store.onlineResolve = null;
+    }
+    function onOffline() {
+      store.isOnline = false;
+      store.currentXhr?.abort();
+    }
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
   });
 
   $effect(() => {
-    if (store.filePreviewId && store.previewFile && !store.previewFile.type.startsWith("image/") && !store.previewFile.type.startsWith("audio/")) {
+    if (
+      store.filePreviewId &&
+      store.previewFile &&
+      !store.previewFile.type.startsWith("image/") &&
+      !store.previewFile.type.startsWith("audio/")
+    ) {
       store.loadPreviewContent();
     }
   });
@@ -50,8 +87,9 @@
   let savedScroll = 0;
 
   beforeNavigate(({ to }) => {
-    if (to?.url.pathname === $page.url.pathname) {
-      savedScroll = document.querySelector<HTMLElement>(".content-area")?.scrollTop ?? 0;
+    if (to?.url.pathname === page.url.pathname) {
+      savedScroll =
+        document.querySelector<HTMLElement>(".content-area")?.scrollTop ?? 0;
     }
   });
 
@@ -67,7 +105,17 @@
 <div class="drive-container">
   {#if store.isShared && store.shareInfo?.type === "file"}
     <div class="content-area">
-      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.sharePreviewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} bind:editMode={store.editMode} bind:editText={store.editText} />
+      <FilePreview
+        driveId={store.driveId}
+        filePreviewId={store.filePreviewId}
+        previewFile={store.sharePreviewFile}
+        previewCategory={store.previewCategory}
+        previewContent={store.previewContent}
+        previewLoading={store.previewLoading}
+        previewError={store.previewError}
+        bind:editMode={store.editMode}
+        bind:editText={store.editText}
+      />
     </div>
   {:else if !store.isShared && !store.data.user}
     <div class="unauthorized">
@@ -77,28 +125,70 @@
   {:else}
     {#if store.filePreviewId}
       <div class="preview-toolbar">
-        <button class="preview-toolbar-close" onclick={store.closeFilePreview} aria-label="Close preview">
+        <button
+          class="preview-toolbar-close"
+          onclick={store.closeFilePreview}
+          aria-label="Close preview"
+        >
           <X size={18} />
         </button>
-        <span class="preview-toolbar-name">{store.previewFile?.originalName ?? ""}</span>
+        <span class="preview-toolbar-name"
+          >{store.previewFile?.originalName ?? ""}</span
+        >
         <span class="toolbar-spacer"></span>
         <div class="preview-toolbar-actions">
-          <button class="preview-toolbar-btn" disabled={store.previewFileIndex <= 0} onclick={store.goToPrevFile} aria-label="Previous"><ChevronLeft size={16} /></button>
-          <button class="preview-toolbar-btn" disabled={store.previewFileIndex < 0 || store.previewFileIndex >= store.previewFiles.length - 1} onclick={store.goToNextFile} aria-label="Next"><ChevronRight size={16} /></button>
+          <button
+            class="preview-toolbar-btn"
+            disabled={store.previewFileIndex <= 0}
+            onclick={store.goToPrevFile}
+            aria-label="Previous"><ChevronLeft size={16} /></button
+          >
+          <button
+            class="preview-toolbar-btn"
+            disabled={store.previewFileIndex < 0 ||
+              store.previewFileIndex >= store.previewFiles.length - 1}
+            onclick={store.goToNextFile}
+            aria-label="Next"><ChevronRight size={16} /></button
+          >
           {#if store.editMode}
-            <button class="preview-toolbar-btn" onclick={store.saveEdit}>Save</button>
-            <button class="preview-toolbar-btn" onclick={store.cancelEdit}>Cancel</button>
+            <button class="preview-toolbar-btn" onclick={store.saveEdit}
+              >Save</button
+            >
+            <button class="preview-toolbar-btn" onclick={store.cancelEdit}
+              >Cancel</button
+            >
           {:else if !store.isShared && store.canEdit}
-            <button class="preview-toolbar-btn" onclick={store.enableEdit}><Pen size={14} /> Edit</button>
+            <button class="preview-toolbar-btn" onclick={store.enableEdit}
+              ><Pen size={14} /> Edit</button
+            >
           {/if}
           {#if store.previewFile}
-            <a class="preview-toolbar-btn" href="/api/drive/{store.driveId}/files/{store.previewFile.id}/download" download={store.previewFile.originalName}><Download size={14} /> Download</a>
+            <a
+              class="preview-toolbar-btn"
+              href="/api/drive/{store.driveId}/files/{store.previewFile
+                .id}/download"
+              download={store.previewFile.originalName}
+              ><Download size={14} /> Download</a
+            >
           {/if}
           {#if !store.isShared}
-            <button class="preview-toolbar-btn" onclick={() => store.previewFile && store.openShareDialog(store.previewFile.id, store.previewFile.originalName, "file")}><Share2 size={14} /> Share</button>
+            <button
+              class="preview-toolbar-btn"
+              onclick={() =>
+                store.previewFile &&
+                store.openShareDialog(
+                  store.previewFile.id,
+                  store.previewFile.originalName,
+                  "file",
+                )}><Share2 size={14} /> Share</button
+            >
           {/if}
           {#if store.canDelete}
-            <button class="preview-toolbar-btn" onclick={() => store.handleDeletePreview(store.previewFile!.id)}><Trash2 size={14} /> Delete</button>
+            <button
+              class="preview-toolbar-btn"
+              onclick={() => store.handleDeletePreview(store.previewFile!.id)}
+              ><Trash2 size={14} /> Delete</button
+            >
           {/if}
         </div>
       </div>
@@ -107,11 +197,18 @@
         breadcrumbs={store.displayBreadcrumbs}
         viewMode={store.viewMode}
         onnavigate={store.navigateTo}
-        onviewmodechange={(m) => store.viewMode = m}
+        onviewmodechange={(m) => (store.viewMode = m)}
         showNewButton={store.canUpload}
-        onnewclick={() => { store.showNewItem = true; store.newItemType = "folder"; store.newItemName = ""; }}
+        onnewclick={() => {
+          store.showNewItem = true;
+          store.newItemType = "folder";
+          store.newItemName = "";
+        }}
         showUploadButton={store.canUpload}
-        onuploadclick={() => document.querySelector<HTMLInputElement>("#drive-file-input")?.click()}
+        onuploadclick={() =>
+          document
+            .querySelector<HTMLInputElement>("#drive-file-input")
+            ?.click()}
         hasSelection={store.hasSelection}
         selectedCount={store.selectedCount}
         canRenameSelection={store.canRenameSelection}
@@ -127,39 +224,82 @@
         bind:searchQuery={store.searchQuery}
         bind:filterType={store.filterType}
         bind:sortMode={store.sortMode}
-        onsearchclear={() => store.searchQuery = ""}
-        onfilterchange={(v) => store.filterType = v}
-        onsortchange={(v) => store.sortMode = v as any}
+        onsearchclear={() => (store.searchQuery = "")}
+        onfilterchange={(v) => (store.filterType = v)}
+        onsortchange={(v) => (store.sortMode = v as any)}
       />
     {/if}
 
-    <form method="POST" enctype="multipart/form-data" style="display:none" onsubmit={store.handleUpload}>
-      <input id="drive-file-input" type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm" onchange={(e) => { (e.currentTarget as HTMLInputElement).form?.requestSubmit(); }} />
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      style="display:none"
+      onsubmit={store.handleUpload}
+    >
+      <input
+        id="drive-file-input"
+        type="file"
+        multiple
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm"
+        onchange={(e) => {
+          (e.currentTarget as HTMLInputElement).form?.requestSubmit();
+        }}
+      />
     </form>
 
-    <div class="content-area" class:drag-over={store.dragOver} role="application"
-      ondragover={(e: DragEvent) => { e.preventDefault(); store.dragOver = true; }}
-      ondragleave={() => store.dragOver = false}
+    <div
+      class="content-area"
+      class:drag-over={store.dragOver}
+      role="application"
+      ondragover={(e: DragEvent) => {
+        e.preventDefault();
+        store.dragOver = true;
+      }}
+      ondragleave={() => (store.dragOver = false)}
       ondrop={(e: DragEvent) => {
-        e.preventDefault(); store.dragOver = false;
+        e.preventDefault();
+        store.dragOver = false;
         if (!store.canUpload) return;
         const dt = e.dataTransfer;
         if (dt?.files.length) {
-          const input = document.querySelector<HTMLInputElement>("#drive-file-input");
-          if (input) { const dT = new DataTransfer(); for (const f of dt.files) dT.items.add(f); input.files = dT.files; input.form?.requestSubmit(); }
+          const input =
+            document.querySelector<HTMLInputElement>("#drive-file-input");
+          if (input) {
+            const dT = new DataTransfer();
+            for (const f of dt.files) dT.items.add(f);
+            input.files = dT.files;
+            input.form?.requestSubmit();
+          }
         }
       }}
     >
       {#if !store.isOnline}
-        <div class="offline-banner">{store.uploading ? "Connection lost &mdash; upload paused, resumes automatically" : "No internet connection"}</div>
+        <div class="offline-banner">
+          {store.uploading
+            ? "Connection lost &mdash; upload paused, resumes automatically"
+            : "No internet connection"}
+        </div>
       {/if}
       {#if store.uploading}
         <div class="upload-banner">
           <div class="upload-summary">
             <span>Uploading {store.uploadProgress}/{store.uploadTotal}</span>
-            <span>{store.totalEta > 0 ? `${formatEta(store.totalEta)} left` : ""}</span>
-            <span>{store.totalSpeed > 0 ? formatSpeed(store.totalSpeed) : ""}</span>
-            <div class="progress-bar"><div class="progress-fill" style="width:{store.overallBytes ? (store.totalUploadedBytes / store.overallBytes * 100) : 0}%"></div></div>
+            <span
+              >{store.totalEta > 0
+                ? `${formatEta(store.totalEta)} left`
+                : ""}</span
+            >
+            <span
+              >{store.totalSpeed > 0 ? formatSpeed(store.totalSpeed) : ""}</span
+            >
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                style="width:{store.overallBytes
+                  ? (store.totalUploadedBytes / store.overallBytes) * 100
+                  : 0}%"
+              ></div>
+            </div>
           </div>
           {#each store.uploadFiles as f}
             {#if !f.done}
@@ -167,20 +307,58 @@
                 <span class="upload-name">{f.name}</span>
                 <span>{f.eta > 0 ? `${formatEta(f.eta)} left` : ""}</span>
                 <span>{f.speed > 0 ? formatSpeed(f.speed) : ""}</span>
-                <div class="progress-bar"><div class="progress-fill" style="width:{f.totalBytes ? (f.uploadedBytes / f.totalBytes * 100) : 0}%"></div></div>
+                <div class="progress-bar">
+                  <div
+                    class="progress-fill"
+                    style="width:{f.totalBytes
+                      ? (f.uploadedBytes / f.totalBytes) * 100
+                      : 0}%"
+                  ></div>
+                </div>
               </div>
             {/if}
           {/each}
         </div>
       {/if}
 
-      <FilePreview driveId={store.driveId} filePreviewId={store.filePreviewId} previewFile={store.previewFile} previewCategory={store.previewCategory} previewContent={store.previewContent} previewLoading={store.previewLoading} previewError={store.previewError} bind:editMode={store.editMode} bind:editText={store.editText} />
+      <FilePreview
+        driveId={store.driveId}
+        filePreviewId={store.filePreviewId}
+        previewFile={store.previewFile}
+        previewCategory={store.previewCategory}
+        previewContent={store.previewContent}
+        previewLoading={store.previewLoading}
+        previewError={store.previewError}
+        bind:editMode={store.editMode}
+        bind:editText={store.editText}
+      />
 
       {#if !store.filePreviewId}
         {#if store.viewMode === "grid"}
-          <GridView driveId={store.driveId} folders={store.displayFolders} files={store.displayFiles} folderSizes={store.displayFolderSizes} selectedIds={store.selectedIds} onnavigate={store.navigateTo} onopenfilepreview={store.openFilePreview} ontoggleselection={store.toggleSelection} />
+          <GridView
+            driveId={store.driveId}
+            folders={store.displayFolders}
+            files={store.displayFiles}
+            folderSizes={store.displayFolderSizes}
+            selectedIds={store.selectedIds}
+            onnavigate={store.navigateTo}
+            onopenfilepreview={store.openFilePreview}
+            ontoggleselection={store.toggleSelection}
+          />
         {:else}
-          <ListView driveId={store.driveId} folders={store.displayFolders} files={store.displayFiles} folderSizes={store.displayFolderSizes} selectedIds={store.selectedIds} sortMode={store.sortMode} updateSort={store.updateSort} sortIndicator={store.sortIndicator} onnavigate={store.navigateTo} onopenfilepreview={store.openFilePreview} ontoggleselection={store.toggleSelection} />
+          <ListView
+            driveId={store.driveId}
+            folders={store.displayFolders}
+            files={store.displayFiles}
+            folderSizes={store.displayFolderSizes}
+            selectedIds={store.selectedIds}
+            sortMode={store.sortMode}
+            updateSort={store.updateSort}
+            sortIndicator={store.sortIndicator}
+            onnavigate={store.navigateTo}
+            onopenfilepreview={store.openFilePreview}
+            ontoggleselection={store.toggleSelection}
+          />
         {/if}
       {/if}
     </div>
@@ -190,11 +368,26 @@
 <!-- Share Dialog -->
 {#if !store.isShared && store.shareDialogOpen && store.showShareDialog}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={store.closeShareDialog}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={store.closeShareDialog}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
       <h2>{store.showShareDialog.name}</h2>
-      <form onsubmit={(e) => { e.preventDefault(); store.createShareLink(); }}>
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          store.createShareLink();
+        }}
+      >
         <div class="field">
           <label for="share-permissions">Permissions</label>
           <select id="share-permissions" bind:value={store.sharePermissions}>
@@ -205,16 +398,31 @@
         </div>
         <div class="field">
           <label for="share-expiry">Expires at (optional)</label>
-          <input id="share-expiry" type="datetime-local" bind:value={store.shareExpiry} />
+          <input
+            id="share-expiry"
+            type="datetime-local"
+            bind:value={store.shareExpiry}
+          />
         </div>
         {#if store.shareUrlValue}
           <div class="field">
             <label for="share-url">Share URL</label>
             <input id="share-url" value={store.shareUrlValue} readonly />
           </div>
-          <button type="button" class="btn-primary" onclick={() => store.copyShareUrl(store.existingShares[0]?.token || "")}>{store.copiedToken ? "Copied!" : "Copy Link"}</button>
+          <button
+            type="button"
+            class="btn-primary"
+            onclick={() =>
+              store.copyShareUrl(store.existingShares[0]?.token || "")}
+            >{store.copiedToken ? "Copied!" : "Copy Link"}</button
+          >
         {:else}
-          <button type="submit" class="btn-primary" disabled={store.creatingShare}>{store.creatingShare ? "Creating..." : "Create Share Link"}</button>
+          <button
+            type="submit"
+            class="btn-primary"
+            disabled={store.creatingShare}
+            >{store.creatingShare ? "Creating..." : "Create Share Link"}</button
+          >
         {/if}
         {#if store.createShareError}
           <p class="error">{store.createShareError}</p>
@@ -226,11 +434,25 @@
         <ul class="share-list">
           {#each store.existingShares as share}
             <li>
-              <span>{share.file?.originalName || share.folder?.name || "Unknown"}</span>
+              <span
+                >{share.file?.originalName ||
+                  share.folder?.name ||
+                  "Unknown"}</span
+              >
               <span>{share.permissions}</span>
-              {#if share.expiresAt}<span>Expires {formatDate(share.expiresAt)}</span>{/if}
-              <button class="btn-sm" onclick={() => store.copyShareUrl(share.token)}>{store.copiedToken === share.token ? "Copied!" : "Copy"}</button>
-              <button class="btn-sm" onclick={() => store.revokeShare(share.id)}>Revoke</button>
+              {#if share.expiresAt}<span
+                  >Expires {formatDate(share.expiresAt)}</span
+                >{/if}
+              <button
+                class="btn-sm"
+                onclick={() => store.copyShareUrl(share.token)}
+                >{store.copiedToken === share.token
+                  ? "Copied!"
+                  : "Copy"}</button
+              >
+              <button class="btn-sm" onclick={() => store.revokeShare(share.id)}
+                >Revoke</button
+              >
             </li>
           {/each}
         </ul>
@@ -243,14 +465,28 @@
 <!-- Confirm Dialog -->
 {#if store.confirmOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => store.confirmOpen = false}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={() => (store.confirmOpen = false)}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
       <h2>{store.confirmTitle}</h2>
       <p>{store.confirmMessage}</p>
       <div class="modal-actions">
-        <button class="btn-ghost" onclick={() => store.confirmOpen = false}>Cancel</button>
-        <button class="btn-primary" onclick={store.confirmAction}>{store.confirmTitle}</button>
+        <button class="btn-ghost" onclick={() => (store.confirmOpen = false)}
+          >Cancel</button
+        >
+        <button class="btn-primary" onclick={store.confirmAction}
+          >{store.confirmTitle}</button
+        >
       </div>
     </div>
   </div>
@@ -259,11 +495,29 @@
 <!-- New Item Dialog -->
 {#if store.showNewItem}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => { store.showNewItem = false; store.newItemName = ""; }}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={() => {
+      store.showNewItem = false;
+      store.newItemName = "";
+    }}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
       <h2>New</h2>
-      <form onsubmit={(e) => { e.preventDefault(); store.handleCreateItem(); }}>
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          store.handleCreateItem();
+        }}
+      >
         <div class="field">
           <label for="new-item-type">Type</label>
           <select id="new-item-type" bind:value={store.newItemType}>
@@ -275,11 +529,34 @@
         </div>
         <div class="field">
           <label for="new-item-name">Name</label>
-          <input id="new-item-name" bind:value={store.newItemName} placeholder={store.newItemType === "folder" ? "New Folder" : store.newItemType === "txt" ? "notes.txt" : store.newItemType === "md" ? "readme.md" : "data.csv"} required />
+          <input
+            id="new-item-name"
+            bind:value={store.newItemName}
+            placeholder={store.newItemType === "folder"
+              ? "New Folder"
+              : store.newItemType === "txt"
+                ? "notes.txt"
+                : store.newItemType === "md"
+                  ? "readme.md"
+                  : "data.csv"}
+            required
+          />
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-ghost" onclick={() => { store.showNewItem = false; store.newItemName = ""; }}>Cancel</button>
-          <button type="submit" class="btn-primary" disabled={!store.newItemName.trim() || store.creatingItem}>{store.creatingItem ? "Creating..." : "Create"}</button>
+          <button
+            type="button"
+            class="btn-ghost"
+            onclick={() => {
+              store.showNewItem = false;
+              store.newItemName = "";
+            }}>Cancel</button
+          >
+          <button
+            type="submit"
+            class="btn-primary"
+            disabled={!store.newItemName.trim() || store.creatingItem}
+            >{store.creatingItem ? "Creating..." : "Create"}</button
+          >
         </div>
       </form>
     </div>
@@ -289,18 +566,48 @@
 <!-- Move Dialog -->
 {#if !store.isShared && store.moveDialogOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => store.moveDialogOpen = false}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={() => (store.moveDialogOpen = false)}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
-      <h2>Move {store.selectedCount > 1 ? `${store.selectedCount} items` : store.moveTargetNames}</h2>
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
+      <h2>
+        Move {store.selectedCount > 1
+          ? `${store.selectedCount} items`
+          : store.moveTargetNames}
+      </h2>
       <p>Choose destination:</p>
       <ul class="move-list">
-        <li><button class="btn-ghost" onclick={() => store.doMove(null)} disabled={store.moveRunning}>My Drive (root)</button></li>
-        {#each store.allFolders.filter(f => f.id !== store.moveDir) as folder}
-          <li><button class="btn-ghost" onclick={() => store.doMove(folder.id)} disabled={store.moveRunning}>{folder.name}</button></li>
+        <li>
+          <button
+            class="btn-ghost"
+            onclick={() => store.doMove(null)}
+            disabled={store.moveRunning}>My Drive (root)</button
+          >
+        </li>
+        {#each store.allFolders.filter((f) => f.id !== store.moveDir) as folder}
+          <li>
+            <button
+              class="btn-ghost"
+              onclick={() => store.doMove(folder.id)}
+              disabled={store.moveRunning}>{folder.name}</button
+            >
+          </li>
         {/each}
       </ul>
-      <button class="btn-ghost" onclick={() => store.moveDialogOpen = false} disabled={store.moveRunning}>Cancel</button>
+      <button
+        class="btn-ghost"
+        onclick={() => (store.moveDialogOpen = false)}
+        disabled={store.moveRunning}>Cancel</button
+      >
     </div>
   </div>
 {/if}
@@ -308,11 +615,26 @@
 <!-- Rename Dialog -->
 {#if store.renameDialogOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => store.renameDialogOpen = false}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={() => (store.renameDialogOpen = false)}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
       <h2>Rename &quot;{store.renameTargetName}&quot;</h2>
-      <form onsubmit={(e) => { e.preventDefault(); store.doRename(); }}>
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          store.doRename();
+        }}
+      >
         <div class="field">
           <label for="rename-value">Name</label>
           <input id="rename-value" bind:value={store.renameValue} required />
@@ -321,8 +643,17 @@
           <p class="error">{store.renameError}</p>
         {/if}
         <div class="modal-actions">
-          <button type="button" class="btn-ghost" onclick={() => store.renameDialogOpen = false}>Cancel</button>
-          <button type="submit" class="btn-primary" disabled={store.renaming || !store.renameValue.trim()}>{store.renaming ? "Renaming..." : "Rename"}</button>
+          <button
+            type="button"
+            class="btn-ghost"
+            onclick={() => (store.renameDialogOpen = false)}>Cancel</button
+          >
+          <button
+            type="submit"
+            class="btn-primary"
+            disabled={store.renaming || !store.renameValue.trim()}
+            >{store.renaming ? "Renaming..." : "Rename"}</button
+          >
         </div>
       </form>
     </div>
@@ -332,14 +663,33 @@
 <!-- Delete Confirm (shared drive) -->
 {#if store.isShared && store.showDeleteConfirm}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="button" tabindex="0" onclick={() => store.showDeleteConfirm = false}>
+  <div
+    class="modal-overlay"
+    role="button"
+    tabindex="0"
+    onclick={() => (store.showDeleteConfirm = false)}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+    <div
+      class="modal"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      tabindex="-1"
+    >
       <h2>Delete File</h2>
       <p>Are you sure you want to delete this file?</p>
       <div class="modal-actions">
-        <button class="btn-ghost" onclick={() => store.showDeleteConfirm = false}>Cancel</button>
-        <button class="btn-primary" onclick={() => { store.showDeleteConfirm = false; store.doDeleteFile(store.deleteTargetId); }}>Delete</button>
+        <button
+          class="btn-ghost"
+          onclick={() => (store.showDeleteConfirm = false)}>Cancel</button
+        >
+        <button
+          class="btn-primary"
+          onclick={() => {
+            store.showDeleteConfirm = false;
+            store.doDeleteFile(store.deleteTargetId);
+          }}>Delete</button
+        >
       </div>
     </div>
   </div>

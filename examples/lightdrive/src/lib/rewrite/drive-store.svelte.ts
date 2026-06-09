@@ -100,7 +100,7 @@ export class DriveStore {
   sortMode = $state<SortMode>("date-desc");
   filterType = $state("all");
 
-  shareInfo = $derived(this.isShared ? this.data.shareInfo : null);
+  shareInfo = $derived(this.isShared ? this.data.shareInfo ?? null : null);
   sharedFolders = $derived(this.isShared ? this.data.sharedFolders ?? [] : []);
   sharedFiles = $derived(this.isShared ? this.data.sharedFiles ?? [] : []);
   shareBreadcrumbs = $derived(this.isShared ? this.data.shareBreadcrumbs ?? [] : []);
@@ -228,20 +228,27 @@ export class DriveStore {
 
   openFilePreview = (fileId: string) => {
     this.clearSelection();
+    const scrollTop = document.querySelector<HTMLElement>(".content-area")?.scrollTop ?? 0;
     const params = new URLSearchParams();
     const folder = this.currentFolderId();
     if (folder) params.set("folder", folder);
     params.set("file", fileId);
-    this.kit.goto(`/ui-rewrite/drive/${this.driveId}?${params}`);
+    params.set("scroll", String(scrollTop));
+    const hash = this.viewMode === "grid" ? "#grid" : "#list";
+    this.kit.goto(`/ui-rewrite/drive/${this.driveId}?${params}${hash}`);
   };
 
   closeFilePreview = () => {
     const folder = this.currentFolderId();
     if (this.isShared && this.shareInfo?.type === "file") return;
+    const hash = this.viewMode === "grid" ? "#grid" : "#list";
+    const scroll = this.pageUrl?.searchParams.get("scroll");
     setTimeout(() => {
-      this.kit.goto(
-        folder ? `/ui-rewrite/drive/${this.driveId}?folder=${folder}` : `/ui-rewrite/drive/${this.driveId}`
-      );
+      const params = new URLSearchParams();
+      if (folder) params.set("folder", folder);
+      if (scroll) params.set("scroll", scroll);
+      const qs = params.toString();
+      this.kit.goto(qs ? `/ui-rewrite/drive/${this.driveId}?${qs}${hash}` : `/ui-rewrite/drive/${this.driveId}${hash}`);
     })
   };
 
