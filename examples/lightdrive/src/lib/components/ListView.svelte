@@ -1,7 +1,12 @@
 <script lang="ts">
   import { Flex, Text } from "flewui";
   import { File, Folder, ArrowUp, ArrowDown } from "@lucide/svelte";
-  import { formatSize, formatFullDate, getPreviewUrl, isVideoType } from "./helpers";
+  import {
+    formatSize,
+    formatFullDate,
+    getPreviewUrl,
+    isVideoType,
+  } from "./helpers";
 
   let failedImages = $state<Set<string>>(new Set());
   function imgError(fileId: string) {
@@ -27,10 +32,17 @@
   };
 
   let {
-    driveId, folders, files, folderSizes = {},
+    driveId,
+    folders,
+    files,
+    folderSizes = {},
     selectedIds,
-    sortMode = "date-desc", updateSort, sortIndicator,
-    onnavigate, onopenfilepreview, ontoggleselection,
+    sortMode = "date-desc",
+    updateSort,
+    sortIndicator,
+    onnavigate,
+    onopenfilepreview,
+    ontoggleselection,
     emptyMessage = "No files yet.",
   }: Props = $props();
 
@@ -114,15 +126,34 @@
         ontouchmove={touchMove}
         role="button"
         tabindex={0}
-        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, true); }}
+        onkeydown={(e) => {
+          if (e.key === "Enter") handleClick(e, f.id, true);
+        }}
       >
         <span class="col-name">
-          <Folder size={16} />
-          <Text size="sm">{f.name}</Text>
+          <div class="icon">
+            <Folder size={40} />
+          </div>
+          <Flex direction="column" gap="0" style="min-width: 0;">
+            <Text>{f.name}</Text>
+            <Text
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+              >{formatSize(folderSizes[f.id] ?? 0)} {formatFullDate(f.createdAt)}</Text
+            >
+          </Flex>
         </span>
-        <span class="col-size"><Text size="xs" color="tertiary">{formatSize(folderSizes[f.id] ?? 0)}</Text></span>
-        <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.createdAt)}</Text></span>
-        <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
+        <span class="col-size"
+          ><Text size="xs" color="tertiary"
+            >{formatSize(folderSizes[f.id] ?? 0)}</Text
+          ></span
+        >
+        <span class="col-date"
+          ><Text size="xs" color="tertiary">{formatFullDate(f.createdAt)}</Text
+          ></span
+        >
+        <span class="col-owner"
+          ><Text size="xs" color="tertiary">You</Text></span
+        >
       </div>
     {/each}
     {#each files as f}
@@ -136,21 +167,44 @@
         ontouchmove={touchMove}
         role="button"
         tabindex={0}
-        onkeydown={(e) => { if (e.key === "Enter") handleClick(e, f.id, false); }}
+        onkeydown={(e) => {
+          if (e.key === "Enter") handleClick(e, f.id, false);
+        }}
       >
         <span class="col-name">
-          {#if f.hasPreview || (isVideoType(f.type, f.originalName) && !failedImages.has(f.id))}
-            <img src={getPreviewUrl(f.id, driveId)} alt="" class="list-thumb" onerror={() => imgError(f.id)} />
-          {:else}
-            <File size={16} />
-          {/if}
+          <div class="icon">
+            {#if f.hasPreview || (isVideoType(f.type, f.originalName) && !failedImages.has(f.id))}
+              <img
+                src={getPreviewUrl(f.id, driveId)}
+                alt=""
+                class="list-thumb"
+                onerror={() => imgError(f.id)}
+              />
+            {:else}
+              <File size={40} />
+            {/if}
+          </div>
           <Flex direction="column" gap="0" style="min-width: 0;">
-            <Text size="sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{f.originalName}</Text>
+            <Text
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+              >{f.originalName}</Text
+            >
+            <Text
+              style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+              >{formatSize(f.size)} {formatFullDate(f.uploadedAt)}</Text
+            >
           </Flex>
         </span>
-        <span class="col-size"><Text size="xs" color="tertiary">{formatSize(f.size)}</Text></span>
-        <span class="col-date"><Text size="xs" color="tertiary">{formatFullDate(f.uploadedAt)}</Text></span>
-        <span class="col-owner"><Text size="xs" color="tertiary">You</Text></span>
+        <span class="col-size"
+          ><Text size="xs" color="tertiary">{formatSize(f.size)}</Text></span
+        >
+        <span class="col-date"
+          ><Text size="xs" color="tertiary">{formatFullDate(f.uploadedAt)}</Text
+          ></span
+        >
+        <span class="col-owner"
+          ><Text size="xs" color="tertiary">You</Text></span
+        >
       </div>
     {/each}
   </div>
@@ -233,7 +287,6 @@
     width: 32px;
     height: 32px;
     object-fit: cover;
-    border-radius: 4px;
     flex-shrink: 0;
   }
 
@@ -242,6 +295,7 @@
     .list-row {
       grid-template-columns: 1fr !important;
     }
+    .list-header,
     .col-size,
     .col-date,
     .col-owner {
@@ -249,21 +303,34 @@
     }
 
     .list-row {
-      padding: 12px 16px;
+      padding: 20px 20px;
+      font-size: 40px;
     }
 
-    .col-name :global(.flew-text--sm) {
-      font-size: 16px !important;
+    .list-row .col-name {
+      gap: 20px;
     }
 
     .list-thumb {
-      width: 40px;
-      height: 40px;
+      border-radius: 4px;
+      width: 100%;
+      height: 100%;
     }
 
-    .col-name :global(svg) {
-      width: 24px;
-      height: 24px;
+    .col-name .icon :global(svg) {
+      width: 50%;
+      height: 50%;
+    }
+
+    .col-name .icon {
+      border-radius: 4px;
+      background-color: #444;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   }
 </style>

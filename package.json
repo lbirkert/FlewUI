@@ -52,6 +52,7 @@
 		"svelte"
 	],
 	"dependencies": {
+		"@fontsource/inter": "^5.2.8",
 		"@lucide/svelte": "^1.17.0",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"chart.js": "^4.5.1",

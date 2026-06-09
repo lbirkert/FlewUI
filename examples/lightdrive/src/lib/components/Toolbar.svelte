@@ -119,7 +119,6 @@
         {/if}
         <span class="current-folder">{breadcrumbs[breadcrumbs.length - 1]?.name ?? ""}</span>
       </div>
-      <div style="flex: 1;"></div>
       <Button variant="ghost" size="sm" onclick={() => searchOpen = !searchOpen}>
         <Search size={14} /><span class="btn-label"> Search</span>
       </Button>
