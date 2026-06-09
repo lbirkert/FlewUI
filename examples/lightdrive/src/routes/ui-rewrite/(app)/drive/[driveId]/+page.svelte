@@ -1,11 +1,11 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { goto, invalidate, replaceState, beforeNavigate, afterNavigate } from "$app/navigation";
-  import { formatSize, formatDate, formatFullDate, getPreviewUrl, getFileIconClass } from "$lib/components/rewrite/helpers";
-  import Toolbar from "$lib/components/rewrite/Toolbar.svelte";
-  import FilePreview from "$lib/components/rewrite/FilePreview.svelte";
-  import ListView from "$lib/components/rewrite/ListView.svelte";
-  import GridView from "$lib/components/rewrite/GridView.svelte";
+  import { formatSize, formatDate, formatFullDate, getPreviewUrl, getFileIconClass } from "$lib/rewrite/helpers";
+  import Toolbar from "$lib/rewrite/Toolbar.svelte";
+  import FilePreview from "$lib/rewrite/FilePreview.svelte";
+  import ListView from "$lib/rewrite/ListView.svelte";
+  import GridView from "$lib/rewrite/GridView.svelte";
 
   let { data } = $props();
 
