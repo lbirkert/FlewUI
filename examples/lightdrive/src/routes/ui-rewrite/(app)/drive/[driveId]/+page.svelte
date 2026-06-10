@@ -21,12 +21,12 @@
     formatFullDate,
     getPreviewUrl,
   } from "$lib/rewrite/helpers";
-  import { formatSpeed, formatEta } from "$lib/rewrite/drive-utils";
   import Toolbar from "$lib/rewrite/Toolbar.svelte";
   import FilePreview from "$lib/rewrite/FilePreview.svelte";
   import ListView from "$lib/rewrite/ListView.svelte";
   import GridView from "$lib/rewrite/GridView.svelte";
   import { DriveStore } from "$lib/rewrite/drive-store.svelte";
+  import { uploadStore } from "$lib/rewrite/upload-store.svelte";
 
   let { data } = $props();
 
@@ -47,31 +47,6 @@
     } else if (hash !== "#grid" && store.viewMode !== "list") {
       store.viewMode = "list";
     }
-  });
-
-  $effect(() => {
-    if (store.uploading) {
-      const id = setInterval(() => (store.now = Date.now()), 250);
-      return () => clearInterval(id);
-    }
-  });
-
-  $effect(() => {
-    function onOnline() {
-      store.isOnline = true;
-      store.onlineResolve?.();
-      store.onlineResolve = null;
-    }
-    function onOffline() {
-      store.isOnline = false;
-      store.currentXhr?.abort();
-    }
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
   });
 
   $effect(() => {
@@ -278,51 +253,11 @@
           }
         }}
       >
-        {#if !store.isOnline}
+        {#if !uploadStore.isOnline}
           <div class="offline-banner">
-            {store.uploading
+            {uploadStore.uploading
               ? "Connection lost &mdash; upload paused, resumes automatically"
               : "No internet connection"}
-          </div>
-        {/if}
-        {#if store.uploading}
-          <div class="upload-banner">
-            <div class="upload-summary">
-              <span>Uploading {store.uploadProgress}/{store.uploadTotal}</span>
-              <span
-                >{store.totalEta > 0
-                  ? `${formatEta(store.totalEta)} left`
-                  : ""}</span
-              >
-              <span
-                >{store.totalSpeed > 0 ? formatSpeed(store.totalSpeed) : ""}</span
-              >
-              <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  style="width:{store.overallBytes
-                    ? (store.totalUploadedBytes / store.overallBytes) * 100
-                    : 0}%"
-                ></div>
-              </div>
-            </div>
-            {#each store.uploadFiles as f}
-              {#if !f.done}
-                <div class="upload-item">
-                  <span class="upload-name">{f.name}</span>
-                  <span>{f.eta > 0 ? `${formatEta(f.eta)} left` : ""}</span>
-                  <span>{f.speed > 0 ? formatSpeed(f.speed) : ""}</span>
-                  <div class="progress-bar">
-                    <div
-                      class="progress-fill"
-                      style="width:{f.totalBytes
-                        ? (f.uploadedBytes / f.totalBytes) * 100
-                        : 0}%"
-                    ></div>
-                  </div>
-                </div>
-              {/if}
-            {/each}
           </div>
         {/if}
 

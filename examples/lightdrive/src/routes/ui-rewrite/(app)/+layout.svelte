@@ -4,6 +4,8 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { Folder, BarChart3, LogIn, LogOut, User, Settings, Link, HardDrive, Menu } from "@lucide/svelte";
+  import UploadFooter from "$lib/rewrite/UploadFooter.svelte";
+  import { uploadStore } from "$lib/rewrite/upload-store.svelte";
 
   let { data, children }: { data: { user: { id: string; name: string; email: string } | null }; children: import("svelte").Snippet } = $props();
   let user = $derived(data.user);
@@ -23,6 +25,24 @@
     { href: "/ui-rewrite/drive", label: "Drive", icon: Folder },
     { href: "/ui-rewrite/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
+
+  $effect(() => {
+    function onOnline() {
+      uploadStore.isOnline = true;
+      uploadStore.onlineResolve?.();
+      uploadStore.onlineResolve = null;
+    }
+    function onOffline() {
+      uploadStore.isOnline = false;
+      uploadStore.currentXhr?.abort();
+    }
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  });
 </script>
 
 <ModeWatcher />
@@ -121,5 +141,6 @@
       {@render children()}
     </main>
   </div>
+  <UploadFooter />
 </div>
 

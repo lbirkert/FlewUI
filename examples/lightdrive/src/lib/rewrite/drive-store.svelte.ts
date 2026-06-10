@@ -5,6 +5,7 @@ import {
   currentFolderId, hasPermission, createFolderSortFn, createFileSortFn,
   updateSortValue as computeNextSortMode, sortIndicator as getSortIndicator,
 } from "./drive-utils";
+import { uploadStore } from "./upload-store.svelte";
 
 interface Kit {
   goto: (url: string) => Promise<void>;
@@ -28,26 +29,9 @@ export class DriveStore {
   newItemName = $state("");
   creatingItem = $state(false);
 
-  uploadFiles = $state<UploadFileState[]>([]);
-  uploadStartTime = $state(0);
-  now = $state(Date.now());
-  currentXhr: XMLHttpRequest | null = null;
-
-  uploading = $derived(this.uploadFiles.length > 0 && this.uploadFiles.some(f => !f.done));
-  uploadProgress = $derived(this.uploadFiles.filter(f => f.done).length);
-  uploadTotal = $derived(this.uploadFiles.length);
-  overallBytes = $derived(this.uploadFiles.reduce((a, f) => a + f.totalBytes, 0));
-  totalUploadedBytes = $derived(this.uploadFiles.reduce((a, f) => a + f.uploadedBytes, 0));
-
-  totalSpeed = $derived(
-    this.totalUploadedBytes > 0 && this.uploadStartTime > 0
-      ? this.totalUploadedBytes / ((this.now - this.uploadStartTime) / 1000)
-      : 0
-  );
-  totalEta = $derived(this.totalSpeed > 0 ? (this.overallBytes - this.totalUploadedBytes) / this.totalSpeed : 0);
-
-  isOnline = $state(true);
-  onlineResolve: (() => void) | null = null;
+  uploading = $derived(uploadStore.uploading);
+  uploadProgress = $derived(uploadStore.progress);
+  uploadTotal = $derived(uploadStore.total);
 
   confirmOpen = $state(false);
   confirmTitle = $state("");
@@ -503,23 +487,23 @@ export class DriveStore {
   };
 
   private waitForOnline = (): Promise<void> => {
-    if (this.isOnline) return Promise.resolve();
-    return new Promise((resolve) => { this.onlineResolve = resolve; });
+    if (uploadStore.isOnline) return Promise.resolve();
+    return new Promise((resolve) => { uploadStore.onlineResolve = resolve; });
   };
 
   private xhrPost = (url: string, formData: FormData, onProgress: (pct: number) => void): Promise<any> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      this.currentXhr = xhr;
+      uploadStore.currentXhr = xhr;
       xhr.open("POST", url);
       xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
       xhr.onload = () => {
-        this.currentXhr = null;
+        uploadStore.currentXhr = null;
         try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300) resolve(d); else reject({ error: d.error || "Upload failed", status: xhr.status }); }
         catch { reject({ error: "Invalid response", status: xhr.status }); }
       };
-      xhr.onerror = () => { this.currentXhr = null; reject({ error: "Network error" }); };
-      xhr.onabort = () => { this.currentXhr = null; reject({ error: "Aborted" }); };
+      xhr.onerror = () => { uploadStore.currentXhr = null; reject({ error: "Network error" }); };
+      xhr.onabort = () => { uploadStore.currentXhr = null; reject({ error: "Aborted" }); };
       xhr.send(formData);
     });
   };
@@ -548,7 +532,7 @@ export class DriveStore {
           if (folderId) fd.set("folderId", folderId);
           const data = await this.xhrPost(`/api/drive/${this.driveId}/files`, fd, (pct) => {
             const loaded = start + DRIVE_CHUNK_SIZE * pct;
-            const fi = this.uploadFiles.find(f => f.name === file.name);
+            const fi = uploadStore.files.find(f => f.name === file.name);
             if (fi) {
               fi.uploadedBytes = loaded;
               const elapsed = (Date.now() - startTime) / 1000 || 1;
@@ -562,14 +546,14 @@ export class DriveStore {
         } catch (err) {
           lastError = err;
           if (attempt < maxRetries) {
-            if (!this.isOnline) await this.waitForOnline();
+            if (!uploadStore.isOnline) await this.waitForOnline();
             else await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
           }
         }
       }
       if (lastError) return false;
     }
-    const fi = this.uploadFiles.find(f => f.name === file.name);
+    const fi = uploadStore.files.find(f => f.name === file.name);
     if (fi) fi.done = true;
     return true;
   };
@@ -582,15 +566,16 @@ export class DriveStore {
     const folderId = this.currentFolderId();
     const files_list = Array.from(input.files);
 
-    this.uploadFiles = files_list.map(f => ({
+    const newEntries: UploadFileState[] = files_list.map(f => ({
       name: f.name, totalBytes: f.size, uploadedBytes: 0, speed: 0, eta: 0, done: false,
     }));
-    this.uploadStartTime = Date.now();
+    uploadStore.files = [...uploadStore.files, ...newEntries];
+    uploadStore.startTime = Date.now();
     for (let i = 0; i < files_list.length; i++) {
       const ok = await this.uploadFileChunked(files_list[i], folderId);
       if (!ok) break;
     }
     form.reset();
-    if (this.uploadFiles.every(f => f.done)) this.kit.invalidate("app:drive");
+    if (uploadStore.files.every(f => f.done)) this.kit.invalidate("app:drive");
   };
 }
