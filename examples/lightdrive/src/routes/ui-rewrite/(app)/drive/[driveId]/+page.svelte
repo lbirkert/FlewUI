@@ -103,21 +103,7 @@
 </script>
 
 <div class="drive-container">
-  {#if store.isShared && store.shareInfo?.type === "file"}
-    <div class="content-area">
-      <FilePreview
-        driveId={store.driveId}
-        filePreviewId={store.filePreviewId}
-        previewFile={store.sharePreviewFile}
-        previewCategory={store.previewCategory}
-        previewContent={store.previewContent}
-        previewLoading={store.previewLoading}
-        previewError={store.previewError}
-        bind:editMode={store.editMode}
-        bind:editText={store.editText}
-      />
-    </div>
-  {:else if !store.isShared && !store.data.user}
+  {#if !store.isShared && !store.data.user}
     <div class="unauthorized">
       <p>Sign in to access your drive.</p>
       <a href="/ui-rewrite/auth" class="btn-primary">Sign In</a>
@@ -126,13 +112,15 @@
     {#if store.filePreviewId}
       <div class="preview-toolbar">
         <div class="preview-toolbar-header">
-          <button
-            class="preview-toolbar-close"
-            onclick={store.closeFilePreview}
-            aria-label="Close preview"
-          >
-            <X size={18} />
-          </button>
+          {#if !(store.isShared && store.shareInfo?.type === "file")}
+            <button
+              class="preview-toolbar-close"
+              onclick={store.closeFilePreview}
+              aria-label="Close preview"
+            >
+              <X size={18} />
+            </button>
+          {/if}
           <span class="preview-toolbar-name"
             >{store.previewFile?.originalName ?? ""}</span
           >
@@ -231,138 +219,154 @@
       />
     {/if}
 
-    <form
-      method="POST"
-      enctype="multipart/form-data"
-      style="display:none"
-      onsubmit={store.handleUpload}
-    >
-      <input
-        id="drive-file-input"
-        type="file"
-        multiple
-        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm"
-        onchange={(e) => {
-          (e.currentTarget as HTMLInputElement).form?.requestSubmit();
+    {#if store.isShared && store.shareInfo?.type === "file"}
+      <div class="content-area">
+        <FilePreview
+          driveId={store.driveId}
+          filePreviewId={store.filePreviewId}
+          previewFile={store.sharePreviewFile}
+          previewCategory={store.previewCategory}
+          previewContent={store.previewContent}
+          previewLoading={store.previewLoading}
+          previewError={store.previewError}
+          bind:editMode={store.editMode}
+          bind:editText={store.editText}
+        />
+      </div>
+    {:else}
+      <form
+        method="POST"
+        enctype="multipart/form-data"
+        style="display:none"
+        onsubmit={store.handleUpload}
+      >
+        <input
+          id="drive-file-input"
+          type="file"
+          multiple
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.md,.mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus,.webm"
+          onchange={(e) => {
+            (e.currentTarget as HTMLInputElement).form?.requestSubmit();
+          }}
+        />
+      </form>
+
+      <div
+        class="content-area"
+        class:drag-over={store.dragOver}
+        role="application"
+        ondragover={(e: DragEvent) => {
+          e.preventDefault();
+          store.dragOver = true;
         }}
-      />
-    </form>
-
-    <div
-      class="content-area"
-      class:drag-over={store.dragOver}
-      role="application"
-      ondragover={(e: DragEvent) => {
-        e.preventDefault();
-        store.dragOver = true;
-      }}
-      ondragleave={() => (store.dragOver = false)}
-      ondrop={(e: DragEvent) => {
-        e.preventDefault();
-        store.dragOver = false;
-        if (!store.canUpload) return;
-        const dt = e.dataTransfer;
-        if (dt?.files.length) {
-          const input =
-            document.querySelector<HTMLInputElement>("#drive-file-input");
-          if (input) {
-            const dT = new DataTransfer();
-            for (const f of dt.files) dT.items.add(f);
-            input.files = dT.files;
-            input.form?.requestSubmit();
+        ondragleave={() => (store.dragOver = false)}
+        ondrop={(e: DragEvent) => {
+          e.preventDefault();
+          store.dragOver = false;
+          if (!store.canUpload) return;
+          const dt = e.dataTransfer;
+          if (dt?.files.length) {
+            const input =
+              document.querySelector<HTMLInputElement>("#drive-file-input");
+            if (input) {
+              const dT = new DataTransfer();
+              for (const f of dt.files) dT.items.add(f);
+              input.files = dT.files;
+              input.form?.requestSubmit();
+            }
           }
-        }
-      }}
-    >
-      {#if !store.isOnline}
-        <div class="offline-banner">
-          {store.uploading
-            ? "Connection lost &mdash; upload paused, resumes automatically"
-            : "No internet connection"}
-        </div>
-      {/if}
-      {#if store.uploading}
-        <div class="upload-banner">
-          <div class="upload-summary">
-            <span>Uploading {store.uploadProgress}/{store.uploadTotal}</span>
-            <span
-              >{store.totalEta > 0
-                ? `${formatEta(store.totalEta)} left`
-                : ""}</span
-            >
-            <span
-              >{store.totalSpeed > 0 ? formatSpeed(store.totalSpeed) : ""}</span
-            >
-            <div class="progress-bar">
-              <div
-                class="progress-fill"
-                style="width:{store.overallBytes
-                  ? (store.totalUploadedBytes / store.overallBytes) * 100
-                  : 0}%"
-              ></div>
-            </div>
+        }}
+      >
+        {#if !store.isOnline}
+          <div class="offline-banner">
+            {store.uploading
+              ? "Connection lost &mdash; upload paused, resumes automatically"
+              : "No internet connection"}
           </div>
-          {#each store.uploadFiles as f}
-            {#if !f.done}
-              <div class="upload-item">
-                <span class="upload-name">{f.name}</span>
-                <span>{f.eta > 0 ? `${formatEta(f.eta)} left` : ""}</span>
-                <span>{f.speed > 0 ? formatSpeed(f.speed) : ""}</span>
-                <div class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    style="width:{f.totalBytes
-                      ? (f.uploadedBytes / f.totalBytes) * 100
-                      : 0}%"
-                  ></div>
-                </div>
-              </div>
-            {/if}
-          {/each}
-        </div>
-      {/if}
-
-      <FilePreview
-        driveId={store.driveId}
-        filePreviewId={store.filePreviewId}
-        previewFile={store.previewFile}
-        previewCategory={store.previewCategory}
-        previewContent={store.previewContent}
-        previewLoading={store.previewLoading}
-        previewError={store.previewError}
-        bind:editMode={store.editMode}
-        bind:editText={store.editText}
-      />
-
-      {#if !store.filePreviewId}
-        {#if store.viewMode === "grid"}
-          <GridView
-            driveId={store.driveId}
-            folders={store.displayFolders}
-            files={store.displayFiles}
-            folderSizes={store.displayFolderSizes}
-            selectedIds={store.selectedIds}
-            onnavigate={store.navigateTo}
-            onopenfilepreview={store.openFilePreview}
-            ontoggleselection={store.toggleSelection}
-          />
-        {:else}
-          <ListView
-            driveId={store.driveId}
-            folders={store.displayFolders}
-            files={store.displayFiles}
-            folderSizes={store.displayFolderSizes}
-            selectedIds={store.selectedIds}
-            sortMode={store.sortMode}
-            updateSort={store.updateSort}
-            sortIndicator={store.sortIndicator}
-            onnavigate={store.navigateTo}
-            onopenfilepreview={store.openFilePreview}
-            ontoggleselection={store.toggleSelection}
-          />
         {/if}
-      {/if}
-    </div>
+        {#if store.uploading}
+          <div class="upload-banner">
+            <div class="upload-summary">
+              <span>Uploading {store.uploadProgress}/{store.uploadTotal}</span>
+              <span
+                >{store.totalEta > 0
+                  ? `${formatEta(store.totalEta)} left`
+                  : ""}</span
+              >
+              <span
+                >{store.totalSpeed > 0 ? formatSpeed(store.totalSpeed) : ""}</span
+              >
+              <div class="progress-bar">
+                <div
+                  class="progress-fill"
+                  style="width:{store.overallBytes
+                    ? (store.totalUploadedBytes / store.overallBytes) * 100
+                    : 0}%"
+                ></div>
+              </div>
+            </div>
+            {#each store.uploadFiles as f}
+              {#if !f.done}
+                <div class="upload-item">
+                  <span class="upload-name">{f.name}</span>
+                  <span>{f.eta > 0 ? `${formatEta(f.eta)} left` : ""}</span>
+                  <span>{f.speed > 0 ? formatSpeed(f.speed) : ""}</span>
+                  <div class="progress-bar">
+                    <div
+                      class="progress-fill"
+                      style="width:{f.totalBytes
+                        ? (f.uploadedBytes / f.totalBytes) * 100
+                        : 0}%"
+                    ></div>
+                  </div>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {/if}
+
+        <FilePreview
+          driveId={store.driveId}
+          filePreviewId={store.filePreviewId}
+          previewFile={store.previewFile}
+          previewCategory={store.previewCategory}
+          previewContent={store.previewContent}
+          previewLoading={store.previewLoading}
+          previewError={store.previewError}
+          bind:editMode={store.editMode}
+          bind:editText={store.editText}
+        />
+
+        {#if !store.filePreviewId}
+          {#if store.viewMode === "grid"}
+            <GridView
+              driveId={store.driveId}
+              folders={store.displayFolders}
+              files={store.displayFiles}
+              folderSizes={store.displayFolderSizes}
+              selectedIds={store.selectedIds}
+              onnavigate={store.navigateTo}
+              onopenfilepreview={store.openFilePreview}
+              ontoggleselection={store.toggleSelection}
+            />
+          {:else}
+            <ListView
+              driveId={store.driveId}
+              folders={store.displayFolders}
+              files={store.displayFiles}
+              folderSizes={store.displayFolderSizes}
+              selectedIds={store.selectedIds}
+              sortMode={store.sortMode}
+              updateSort={store.updateSort}
+              sortIndicator={store.sortIndicator}
+              onnavigate={store.navigateTo}
+              onopenfilepreview={store.openFilePreview}
+              ontoggleselection={store.toggleSelection}
+            />
+          {/if}
+        {/if}
+      </div>
+    {/if}
   {/if}
 </div>
 

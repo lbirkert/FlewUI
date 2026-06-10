@@ -186,7 +186,7 @@ export class DriveStore {
     (!this.isShared || hasPermission(this.shareInfo, "structure")) && !!this.singleSelected
   );
   canShareSelection = $derived(
-    !this.isShared && !!this.singleSelected && this.singleSelected.originalName !== undefined
+    !this.isShared && !!this.singleSelected
   );
   canMoveSelection = $derived(!this.isShared && this.selectedCount > 0);
   canDeleteSelection = $derived(this.canDelete && this.selectedCount > 0);
@@ -414,8 +414,13 @@ export class DriveStore {
   };
 
   handleSelectionShare = () => {
-    if (!this.singleSelected || this.singleSelected.originalName === undefined) return;
-    this.openShareDialog(this.singleSelected.id, this.singleSelected.name || this.singleSelected.originalName, "file");
+    if (!this.singleSelected) return;
+    const isFolder = this.singleSelected.originalName === undefined;
+    this.openShareDialog(
+      this.singleSelected.id,
+      this.singleSelected.name || this.singleSelected.originalName,
+      isFolder ? "folder" : "file"
+    );
     this.clearSelection();
   };
 

@@ -1,4 +1,5 @@
 @media (max-width: 768px) {
+
   /* Remove button labels */
   .m-hide {
     display: none !important;
@@ -11,6 +12,7 @@
   .list-table {
     margin: 0 !important;
     border: none !important;
+    border-radius: 0 !important;
   }
 
   .list-header {
@@ -22,7 +24,8 @@
     padding: var(--flew-spacing-3) var(--flew-spacing-4) !important;
   }
 
-  .list-thumb, .list-thumb-placeholder {
+  .list-thumb,
+  .list-thumb-placeholder {
     width: 40px !important;
     height: 40px !important;
     border-radius: var(--flew-spacing-2) !important;
@@ -32,8 +35,18 @@
     gap: var(--flew-spacing-4) !important;
   }
 
+  .col-name div {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+  }
+
   .name-text {
     font-size: var(--flew-font-size-base) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .name-size {
