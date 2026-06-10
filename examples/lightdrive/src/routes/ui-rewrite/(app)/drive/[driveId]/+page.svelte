@@ -30,6 +30,7 @@
 
   let { data } = $props();
 
+  // svelte-ignore state_referenced_locally
   const store = new DriveStore(data, { goto, invalidate }, page.url);
 
   $effect(() => {
