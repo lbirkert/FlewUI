@@ -54,7 +54,7 @@
             onclick={() => userMenuOpen = !userMenuOpen}
             onblur={() => setTimeout(() => userMenuOpen = false, 150)}
           >
-            <span class="avatar-inline">{getInitials(user.name)}</span>
+            <span class="avatar avatar:sm">{getInitials(user.name)}</span>
             <span class="user-name">{user.name}</span>
           </button>
           {#if userMenuOpen}
@@ -95,9 +95,9 @@
         {#if user}
           <hr />
           <div class="mobile-user-info">
-            <span class="avatar-large">{getInitials(user.name)}</span>
+            <span class="avatar avatar:md">{getInitials(user.name)}</span>
             <div>
-              <span class="mobile-user-name">{user.name}</span>
+              <span class="user-name">{user.name}</span>
               <span class="mobile-user-email">{user.email}</span>
             </div>
           </div>

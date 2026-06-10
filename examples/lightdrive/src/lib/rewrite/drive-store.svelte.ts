@@ -133,6 +133,15 @@ export class DriveStore {
       ? getFileIconClass(this.previewFile.type, this.previewFile.originalName)
       : null
   );
+  
+  canEdit = $derived(
+    !this.isShared || (this.isShared && this.shareInfo?.type === "file" && hasPermission(this.shareInfo, "edit"))
+  );
+  previewEditable = $derived(
+    this.canEdit && this.previewCategory
+      ? ["txt", "md", "csv", "docx"].includes(this.previewCategory)
+      : false
+  );
 
   rawFolders = $derived(this.isShared ? this.sharedFolders : this.data.folders ?? []);
   rawFiles = $derived(this.isShared ? this.sharedFiles : this.data.files ?? []);
@@ -163,9 +172,6 @@ export class DriveStore {
 
   canUpload = $derived(!this.isShared || hasPermission(this.shareInfo, "insert"));
   canDelete = $derived(!this.isShared || hasPermission(this.shareInfo, "structure"));
-  canEdit = $derived(
-    !this.isShared || (this.isShared && this.shareInfo?.type === "file" && hasPermission(this.shareInfo, "edit"))
-  );
 
   selectedItems = $derived.by(() => {
     const ids = this.selectedIds;

@@ -96,7 +96,7 @@
   };
 </script>
 
-<div class="dashboard">
+<div class="page page:md">
   <h1>Dashboard</h1>
 
   <div class="stat-grid">

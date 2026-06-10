@@ -58,7 +58,7 @@
   ];
 </script>
 
-<div class="shares-page">
+<div class="page page:sm shares-page">
   <h1>Share Links</h1>
 
   <a href="/ui-rewrite/account" class="back-link">&larr; Back to Account</a>

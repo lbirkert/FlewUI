@@ -49,12 +49,12 @@
   }
 </script>
 
-<div class="account-page">
+<div class="page page:sm">
   <h1>Account</h1>
 
   <div class="card">
     <div class="profile-header">
-      <div class="avatar">{getInitials(data.user!.name)}</div>
+      <div class="avatar avatar:lg">{getInitials(data.user!.name)}</div>
       <div>
         <h2>{data.user!.name}</h2>
         <p class="secondary">{data.user!.email}</p>

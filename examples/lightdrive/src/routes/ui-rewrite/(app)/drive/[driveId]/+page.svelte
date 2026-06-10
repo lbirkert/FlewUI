@@ -125,69 +125,70 @@
   {:else}
     {#if store.filePreviewId}
       <div class="preview-toolbar">
-        <button
-          class="preview-toolbar-close"
-          onclick={store.closeFilePreview}
-          aria-label="Close preview"
-        >
-          <X size={18} />
-        </button>
-        <span class="preview-toolbar-name"
-          >{store.previewFile?.originalName ?? ""}</span
-        >
+        <div class="preview-toolbar-header">
+          <button
+            class="preview-toolbar-close"
+            onclick={store.closeFilePreview}
+            aria-label="Close preview"
+          >
+            <X size={18} />
+          </button>
+          <span class="preview-toolbar-name"
+            >{store.previewFile?.originalName ?? ""}</span
+          >
+        </div>
         <span class="toolbar-spacer"></span>
         <div class="preview-toolbar-actions">
           <button
-            class="preview-toolbar-btn"
+            class="preview-btn"
             disabled={store.previewFileIndex <= 0}
             onclick={store.goToPrevFile}
             aria-label="Previous"><ChevronLeft size={16} /></button
           >
           <button
-            class="preview-toolbar-btn"
+            class="preview-btn"
             disabled={store.previewFileIndex < 0 ||
               store.previewFileIndex >= store.previewFiles.length - 1}
             onclick={store.goToNextFile}
             aria-label="Next"><ChevronRight size={16} /></button
           >
           {#if store.editMode}
-            <button class="preview-toolbar-btn" onclick={store.saveEdit}
-              >Save</button
-            >
-            <button class="preview-toolbar-btn" onclick={store.cancelEdit}
+            <button class="preview-btn" onclick={store.saveEdit}>Save</button>
+            <button class="preview-btn" onclick={store.cancelEdit}
               >Cancel</button
             >
-          {:else if !store.isShared && store.canEdit}
-            <button class="preview-toolbar-btn" onclick={store.enableEdit}
+          {:else if store.previewEditable}
+            <button class="preview-btn" onclick={store.enableEdit}
               ><Pen size={14} /> Edit</button
             >
           {/if}
           {#if store.previewFile}
             <a
-              class="preview-toolbar-btn"
+              class="preview-btn"
               href="/api/drive/{store.driveId}/files/{store.previewFile
                 .id}/download"
               download={store.previewFile.originalName}
-              ><Download size={14} /> Download</a
+              ><Download size={14} /> <span class="m-hide">Download</span></a
             >
           {/if}
           {#if !store.isShared}
             <button
-              class="preview-toolbar-btn"
+              class="preview-btn"
               onclick={() =>
                 store.previewFile &&
                 store.openShareDialog(
                   store.previewFile.id,
                   store.previewFile.originalName,
                   "file",
-                )}><Share2 size={14} /> Share</button
+                )}
+              ><Share2 size={14} /> <span class="m-hide">Share</span></button
             >
           {/if}
           {#if store.canDelete}
             <button
-              class="preview-toolbar-btn"
+              class="preview-btn"
               onclick={() => store.handleDeletePreview(store.previewFile!.id)}
-              ><Trash2 size={14} /> Delete</button
+              ><Trash2 size={14} /> <span class="m-hide">Delete</span></button
             >
           {/if}
         </div>

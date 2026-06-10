@@ -77,23 +77,23 @@
       <span class="selection-count">{selectedCount} selected</span>
       <span class="toolbar-spacer"></span>
       {#if canRenameSelection}
-        <button class="toolbar-btn" onclick={onRename}><Pen size={14} /> Rename</button>
+        <button class="btn-ghost" onclick={onRename}><Pen size={14} /> <span class="m-hide">Rename</span></button>
       {/if}
       {#if canShareSelection}
-        <button class="toolbar-btn" onclick={onShare}><Share2 size={14} /> Share</button>
+        <button class="btn-ghost" onclick={onShare}><Share2 size={14} /> <span class="m-hide">Share</span></button>
       {/if}
       {#if canMoveSelection}
-        <button class="toolbar-btn" onclick={onMove}><ArrowRight size={14} /> Move</button>
+        <button class="btn-ghost" onclick={onMove}><ArrowRight size={14} /> <span class="m-hide">Move</span></button>
       {/if}
       {#if canDeleteSelection}
-        <button class="toolbar-btn" onclick={onDelete}><Trash2 size={14} /> Delete</button>
+        <button class="btn-ghost" onclick={onDelete}><Trash2 size={14} /> <span class="m-hide">Delete</span></button>
       {/if}
-      <button class="toolbar-btn" onclick={onClearSelection}><X size={14} /> Cancel</button>
+      <button class="btn-ghost" onclick={onClearSelection}><X size={14} /> <span class="m-hide">Cancel</span></button>
     {:else}
       <nav class="breadcrumb-desktop">
         {#each breadcrumbs as crumb, i}
           {#if i > 0}<span class="breadcrumb-sep">/</span>{/if}
-          <a class="breadcrumb-btn" href="/ui-rewrite/drive/{crumb.id || ''}" onclick={(e) => { e.preventDefault(); onnavigate?.(crumb.id); }}>{crumb.name}</a>
+          <a class="btn-ghost truncate breadcrumb-btn" href="/ui-rewrite/drive/{crumb.id || ''}" onclick={(e) => { e.preventDefault(); onnavigate?.(crumb.id); }}>{crumb.name}</a>
         {/each}
       </nav>
       <nav class="breadcrumb-mobile">
@@ -102,17 +102,17 @@
         {/if}
         <span class="current-folder">{breadcrumbs[breadcrumbs.length - 1]?.name ?? ""}</span>
       </nav>
-      <button class="toolbar-btn" onclick={() => searchOpen = !searchOpen}><Search size={14} /> Search</button>
+      <button class="btn-ghost" onclick={() => searchOpen = !searchOpen}><Search size={14} /> <span class="m-hide">Search</span></button>
       {#if showNewButton}
-        <button class="toolbar-btn" onclick={onnewclick}><Plus size={14} /> New</button>
+        <button class="btn-ghost" onclick={onnewclick}><Plus size={14} /> <span class="m-hide">New</span></button>
       {/if}
       {#if showUploadButton}
-        <button class="toolbar-btn" onclick={onuploadclick}><Upload size={14} /> Upload</button>
+        <button class="btn-ghost" onclick={onuploadclick}><Upload size={14} /> <span class="m-hide">Upload</span></button>
       {/if}
       {#if showViewToggle}
         <div class="view-toggle">
-          <a class="view-btn" class:active={viewMode === "list"} href="#list" aria-label="List view"><List size={14} /> List</a>
-          <a class="view-btn" class:active={viewMode === "grid"} href="#grid" aria-label="Grid view"><Grid3x3 size={14} /> Grid</a>
+          <a class="btn-ghost view-btn" class:active={viewMode === "list"} href="#list" aria-label="List view"><List size={14} /> <span class="m-hide">List</span></a>
+          <a class="btn-ghost view-btn" class:active={viewMode === "grid"} href="#grid" aria-label="Grid view"><Grid3x3 size={14} /> <span class="m-hide">Grid</span></a>
         </div>
       {/if}
     {/if}

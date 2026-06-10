@@ -2,7 +2,7 @@
   import { mode, setMode } from "mode-watcher";
 </script>
 
-<div class="preferences-page">
+<div class="page page:sm">
   <h1>Preferences</h1>
 
   <div class="card">
